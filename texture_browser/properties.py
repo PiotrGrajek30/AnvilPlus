@@ -1,0 +1,89 @@
+"""Persistent user settings for the texture browser."""
+
+import bpy
+from bpy.props import CollectionProperty, IntProperty, StringProperty
+
+
+def texture_browser_user_data_update(self, context):
+    from .persistence import save_texture_browser_data
+
+    save_texture_browser_data()
+
+
+class AnvilTextureBrowserFavoriteFolder(bpy.types.PropertyGroup):
+    """A user-level favorite folder for the texture browser."""
+
+    name: StringProperty(
+        name="Name",
+        description="Favorite folder name",
+        update=texture_browser_user_data_update,
+    )
+    path: StringProperty(
+        name="Folder",
+        description="Absolute folder path",
+        subtype='DIR_PATH',
+        update=texture_browser_user_data_update,
+    )
+
+
+def texture_browser_suffix_update(self, context):
+    suffix = self.suffix.strip().lower()
+    if suffix != self.suffix:
+        self.suffix = suffix
+        return
+    texture_browser_user_data_update(self, context)
+
+
+class AnvilTextureBrowserSuffixFilter(bpy.types.PropertyGroup):
+    """A suffix include/exclude rule for the texture browser."""
+
+    suffix: StringProperty(
+        name="Suffix",
+        description="File suffix, such as .png or _normal.png",
+        update=texture_browser_suffix_update,
+    )
+
+
+class AnvilTextureBrowserCollectionItem(bpy.types.PropertyGroup):
+    """A file stored in a user-level texture browser collection."""
+
+    filepath: StringProperty(
+        name="File",
+        description="Absolute file path",
+        subtype='FILE_PATH',
+        update=texture_browser_user_data_update,
+    )
+
+
+class AnvilTextureBrowserCollection(bpy.types.PropertyGroup):
+    """A named user-level collection of texture browser files."""
+
+    name: StringProperty(
+        name="Name",
+        description="Collection name",
+        update=texture_browser_user_data_update,
+    )
+    files: CollectionProperty(type=AnvilTextureBrowserCollectionItem)
+    active_file_index: IntProperty(
+        name="Active File Index",
+        default=0,
+        update=texture_browser_user_data_update,
+    )
+
+
+classes = (
+    AnvilTextureBrowserFavoriteFolder,
+    AnvilTextureBrowserSuffixFilter,
+    AnvilTextureBrowserCollectionItem,
+    AnvilTextureBrowserCollection,
+)
+
+
+def register():
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
+
+def unregister():
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)

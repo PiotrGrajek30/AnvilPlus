@@ -1,0 +1,848 @@
+bl_info = {
+    "name": "Anvil Level Design",
+    "author": "Alex Hetherington",
+    "version": (1,9, 1),
+    "blender": (5, 1, 0),
+    "location": "View3D > Sidebar > Level Design",
+    "description": "TrenchBroom-style UV tools, texture application, and grid controls for level design",
+    "category": "3D View",
+}
+
+import sys
+
+import bpy
+import blf
+
+for module_name in tuple(sys.modules):
+    if module_name.startswith(f"{__name__}."):
+        vars(sys.modules[__name__]).pop(module_name[len(__name__) + 1:].split('.', 1)[0], None)
+        del sys.modules[module_name]
+
+from . import properties
+from . import handlers
+from . import operators
+from . import panels
+from . import workspace
+from . import hotspot_mapping
+from .texture_browser import properties as texture_browser_properties
+from .core.workspace_check import (
+    is_hotspot_mapping_workspace,
+    is_level_design_workspace,
+)
+from .core import dev_reload
+from .core import materials as core_materials
+from .operators.gltf_export_extension import glTF2ExportUserExtension
+
+_MINIMUM_BLENDER_VERSION = bl_info["blender"]
+_VERSION_OK = bpy.app.version >= _MINIMUM_BLENDER_VERSION
+
+_version_warning_handle = None
+_uv_editor_warning_handle = None
+_hotspot_uv_editor_warning_handle = None
+
+
+def _draw_centered_line(font_id, text, center_x, y, max_width, font_size, color):
+    size = font_size
+    blf.size(font_id, size)
+    text_width, text_height = blf.dimensions(font_id, text)
+
+    while text_width > max_width and size > 12:
+        size -= 1
+        blf.size(font_id, size)
+        text_width, text_height = blf.dimensions(font_id, text)
+
+    blf.color(font_id, color[0], color[1], color[2], color[3])
+    blf.position(font_id, center_x - text_width / 2, y, 0)
+    blf.draw(font_id, text)
+    return text_height
+
+
+def _is_current_area_uv_editor():
+    area = bpy.context.area
+    if area is None or area.type != 'IMAGE_EDITOR':
+        return False
+
+    return getattr(area, "ui_type", None) == 'UV'
+
+
+def _draw_version_warning():
+    if not is_level_design_workspace():
+        return
+
+    region = bpy.context.region
+    if not region:
+        return
+
+    font_id = 0
+    min_ver = ".".join(str(v) for v in _MINIMUM_BLENDER_VERSION)
+    cur_ver = ".".join(str(v) for v in bpy.app.version[:3])
+
+    center_x = region.width // 2
+    center_y = region.height // 2
+
+    # Title
+    blf.size(font_id, 32)
+    blf.color(font_id, 1.0, 0.2, 0.2, 1.0)
+    title = "UNSUPPORTED BLENDER VERSION"
+    tw, th = blf.dimensions(font_id, title)
+    blf.position(font_id, center_x - tw / 2, center_y + 20, 0)
+    blf.draw(font_id, title)
+
+    # Details
+    blf.size(font_id, 20)
+    blf.color(font_id, 1.0, 0.8, 0.4, 1.0)
+    detail = f"Anvil Level Design requires Blender {min_ver} or newer (current: {cur_ver})"
+    dw, dh = blf.dimensions(font_id, detail)
+    blf.position(font_id, center_x - dw / 2, center_y - 20, 0)
+    blf.draw(font_id, detail)
+
+
+def _draw_uv_editor_warning():
+    if not is_level_design_workspace():
+        return
+
+    if not _is_current_area_uv_editor():
+        return
+
+    region = bpy.context.region
+    if not region:
+        return
+
+    font_id = 0
+    center_x = region.width // 2
+    center_y = region.height // 2
+    max_width = region.width * 0.9
+
+    _draw_centered_line(
+        font_id,
+        "UV Editing is not supported in the Level Design workspace.",
+        center_x,
+        center_y,
+        max_width,
+        24,
+        (1.0, 0.8, 0.25, 1.0),
+    )
+
+
+def _draw_hotspot_uv_editor_warning():
+    if not is_hotspot_mapping_workspace():
+        return
+
+    if not _is_current_area_uv_editor():
+        return
+
+    region = bpy.context.region
+    if not region:
+        return
+
+    font_id = 0
+    center_x = region.width // 2
+    center_y = region.height // 2
+    max_width = region.width * 0.9
+
+    _draw_centered_line(
+        font_id,
+        "HOTSPOT EDITING REQUIRES THE IMAGE EDITOR",
+        center_x,
+        center_y + 20,
+        max_width,
+        32,
+        (1.0, 0.2, 0.2, 1.0),
+    )
+    _draw_centered_line(
+        font_id,
+        "Use the editor-type menu in the top-left and select Image Editor.",
+        center_x,
+        center_y - 20,
+        max_width,
+        20,
+        (1.0, 0.8, 0.4, 1.0),
+    )
+
+
+class LEVELDESIGN_OT_restore_default_keybindings(bpy.types.Operator):
+    """Restore all addon keybindings to their default values"""
+    bl_idname = "leveldesign.restore_default_keybindings"
+    bl_label = "Restore Default Keybindings"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        wm = context.window_manager
+        kc_addon = wm.keyconfigs.addon
+        kc_user = wm.keyconfigs.user
+        if kc_addon and kc_user:
+            # Find addon keymaps that contain our items, then restore the user versions
+            for km_addon in kc_addon.keymaps:
+                has_addon_items = any(
+                    kmi.idname.startswith("leveldesign.")
+                    for kmi in km_addon.keymap_items
+                )
+                if has_addon_items:
+                    # Restore the user keymap (which references addon keymap as default)
+                    km_user = kc_user.keymaps.get(km_addon.name)
+                    if km_user:
+                        km_user.restore_to_default()
+
+        self.report({'INFO'}, "Keybindings restored to defaults")
+        return {'FINISHED'}
+
+
+def _on_dev_auto_reload_changed(self, context):
+    if self.dev_auto_reload:
+        dev_reload.start_watcher()
+    try:
+        if not any(getattr(h, "__name__", "") == "_ensure_default_material_handler" for h in bpy.app.handlers.load_post):
+            bpy.app.handlers.load_post.append(_ensure_default_material_handler)
+        if not bpy.app.timers.is_registered(_ensure_default_material_timer):
+            bpy.app.timers.register(_ensure_default_material_timer, first_interval=1.0)
+    except Exception as exc:
+        print(f"Anvil Level Design: Could not schedule default material creation: {exc}", flush=True)
+    else:
+        dev_reload.stop_watcher()
+
+
+class LevelDesignPreferences(bpy.types.AddonPreferences):
+    bl_idname = __package__
+
+    # === Developer ===
+    dev_auto_reload: bpy.props.BoolProperty(
+        name="Auto Reload",
+        description=(
+            "Watch this add-on's Python files and reload it when they change. "
+            "Intended for development only"
+        ),
+        default=False,
+        update=_on_dev_auto_reload_changed,
+    )
+
+    # === Remembered Texture Settings ===
+    # This identifier is kept from the old visible addon preference default so
+    # existing user preferences migrate into the hidden remembered value.
+    pref_pixels_per_meter: bpy.props.IntProperty(
+        name="Remembered Pixels per Meter",
+        description="Last saved file's pixels per meter, used to initialise new unsaved files",
+        default=128,
+        min=1,
+        max=4096,
+        options={'HIDDEN'},
+    )
+
+    # === Remembered Default Material Settings ===
+    # These identifiers are kept from the old visible addon preference defaults
+    # so existing user preferences migrate into the hidden remembered values.
+    pref_default_interpolation: bpy.props.EnumProperty(
+        name="Remembered Default Interpolation",
+        description="Last saved file's default interpolation, used to initialise new unsaved files",
+        items=[
+            ('Closest', "Closest", "No interpolation (pixelated)"),
+            ('Linear', "Linear", "Linear interpolation (smooth)"),
+        ],
+        default='Linear',
+        options={'HIDDEN'},
+    )
+
+    pref_default_texture_as_alpha: bpy.props.BoolProperty(
+        name="Remembered Texture as Alpha",
+        description="Last saved file's texture-as-alpha default, used to initialise new unsaved files",
+        default=False,
+        options={'HIDDEN'},
+    )
+
+    pref_default_vertex_colors: bpy.props.BoolProperty(
+        name="Remembered Vertex Colors",
+        description="Last saved file's vertex colors default, used to initialise new unsaved files",
+        default=False,
+        options={'HIDDEN'},
+    )
+
+    pref_default_roughness: bpy.props.FloatProperty(
+        name="Remembered Roughness",
+        description="Last saved file's roughness default, used to initialise new unsaved files",
+        default=0.5,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+        options={'HIDDEN'},
+    )
+
+    pref_default_metallic: bpy.props.FloatProperty(
+        name="Remembered Metallic",
+        description="Last saved file's metallic default, used to initialise new unsaved files",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+        options={'HIDDEN'},
+    )
+
+    pref_default_emission_strength: bpy.props.FloatProperty(
+        name="Remembered Emission Strength",
+        description="Last saved file's emission strength default, used to initialise new unsaved files",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+        options={'HIDDEN'},
+    )
+
+    pref_default_emission_color: bpy.props.FloatVectorProperty(
+        name="Remembered Emission Color",
+        description="Last saved file's emission color default, used to initialise new unsaved files",
+        subtype='COLOR',
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),
+        options={'HIDDEN'},
+    )
+
+    pref_default_specular: bpy.props.FloatProperty(
+        name="Remembered Specular",
+        description="Last saved file's specular (IOR Level) default, used to initialise new unsaved files",
+        default=0.5,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+        options={'HIDDEN'},
+    )
+
+    pref_default_material_name_pattern: bpy.props.StringProperty(
+        name="Remembered Material Name Pattern",
+        description="Last saved file's material naming pattern, used to initialise new unsaved files",
+        default="{filename}{extension}",
+        options={'HIDDEN'},
+    )
+
+    # === Viewport Defaults (applied on load, override startup.blend) ===
+    pref_default_unit_system: bpy.props.EnumProperty(
+        name="Unit System",
+        description="Scene unit system applied to new (unsaved) files on load",
+        items=[
+            ('NONE', "None", "No units"),
+            ('METRIC', "Metric", "Metric units"),
+            ('IMPERIAL', "Imperial", "Imperial units"),
+        ],
+        default='NONE',
+    )
+
+    pref_default_grid_subdivisions: bpy.props.IntProperty(
+        name="Grid Subdivisions",
+        description="Grid subdivisions applied to every 3D viewport on load",
+        default=1,
+        min=1,
+        max=1024,
+    )
+
+    pref_default_show_extra_edge_length: bpy.props.BoolProperty(
+        name="Show Edge Length",
+        description="Show selected edge lengths in every 3D viewport on load (Measurement overlay)",
+        default=True,
+    )
+
+    # === Material Maker User Settings ===
+    texture_browser_preview_scale: bpy.props.FloatProperty(
+        name="Material Maker Icon Size",
+        description="Remembered Material Maker thumbnail size",
+        default=50.0,
+        min=0.0,
+        max=100.0,
+        subtype='PERCENTAGE',
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    texture_browser_filters_initialized: bpy.props.BoolProperty(
+        name="Material Maker Filters Initialized",
+        default=False,
+        options={'HIDDEN'},
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    texture_browser_last_folder_path: bpy.props.StringProperty(
+        name="Material Maker Last Folder",
+        description="Last folder browsed in the Material Maker",
+        subtype='DIR_PATH',
+        options={'HIDDEN'},
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    texture_browser_favorites: bpy.props.CollectionProperty(
+        type=texture_browser_properties.AnvilTextureBrowserFavoriteFolder,
+    )
+
+    texture_browser_active_favorite_index: bpy.props.IntProperty(
+        name="Active Favorite Folder",
+        default=0,
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    texture_browser_collections: bpy.props.CollectionProperty(
+        type=texture_browser_properties.AnvilTextureBrowserCollection,
+    )
+
+    texture_browser_active_collection_index: bpy.props.IntProperty(
+        name="Active Texture Collection",
+        default=0,
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    texture_browser_include_suffixes: bpy.props.CollectionProperty(
+        type=texture_browser_properties.AnvilTextureBrowserSuffixFilter,
+    )
+
+    texture_browser_active_include_index: bpy.props.IntProperty(
+        name="Active Include Suffix",
+        default=0,
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    texture_browser_exclude_suffixes: bpy.props.CollectionProperty(
+        type=texture_browser_properties.AnvilTextureBrowserSuffixFilter,
+    )
+
+    texture_browser_active_exclude_index: bpy.props.IntProperty(
+        name="Active Exclude Suffix",
+        default=0,
+        update=texture_browser_properties.texture_browser_user_data_update,
+    )
+
+    def draw(self, context):
+        layout = self.layout
+
+        # Developer section
+        layout.separator()
+        layout.label(text="Developer", icon='CONSOLE')
+        box = layout.box()
+        box.prop(self, "dev_auto_reload")
+        box.operator("leveldesign.reload_addon", icon='FILE_REFRESH')
+
+        # Workspaces section
+        layout.separator()
+        layout.label(text="Workspaces")
+        row = layout.row()
+        row.operator("leveldesign.create_level_design_workspace")
+        row.enabled = not workspace.level_design_workspace_exists()
+        row = layout.row()
+        row.operator("leveldesign.create_hotspot_mapping_workspace")
+        row.enabled = not workspace.hotspot_mapping_workspace_exists()
+
+        # New File Defaults section
+        layout.separator()
+        layout.label(text="New File Defaults")
+        box = layout.box()
+        box.label(text="Applied to new (unsaved) files.", icon='INFO')
+        box.label(text="Changes here will not affect the current file.")
+
+        box.separator()
+        box.label(text="Viewport Defaults:")
+        box.prop(self, "pref_default_grid_subdivisions")
+        box.prop(self, "pref_default_show_extra_edge_length")
+
+        box.separator()
+        box.label(text="Scene Settings:")
+        box.prop(self, "pref_default_unit_system")
+
+        # Keybindings section
+        layout.separator()
+        row = layout.row()
+        row.label(text="Keybindings")
+        row.operator("leveldesign.restore_default_keybindings", text="Restore Defaults")
+
+        # Category definitions: order matters for display
+        REMAPPED_CATEGORY = "Remapped Defaults"
+        RELATED_DEFAULT_CATEGORY = "Related Blender Defaults"
+        CATEGORY_ORDER = [REMAPPED_CATEGORY, RELATED_DEFAULT_CATEGORY, "Navigation", "Selection", "UV", "Tools", "Other"]
+        CATEGORY_MAP = {
+            "leveldesign.walk_navigation_hold": "Navigation",
+            "leveldesign.ortho_view": "Navigation",
+            "leveldesign.ortho_pan": "Navigation",
+            "leveldesign.texture_browser_back": "Navigation",
+            "leveldesign.texture_browser_forward": "Navigation",
+            "leveldesign.context_menu": REMAPPED_CATEGORY,
+            "leveldesign.visible_select": "Selection",
+            "leveldesign.visible_shortest_path_pick": "Selection",
+            "leveldesign.visible_object_select": "Selection",
+            "leveldesign.select_linked": "Selection",
+            "leveldesign.select_invalid_uvs": "Selection",
+            "leveldesign.face_uv_mode": "UV",
+            "leveldesign.box_project": "UV",
+            "leveldesign.align_uv": "UV",
+            "leveldesign.fit_to_face": "UV",
+            "leveldesign.apply_image_to_face": "UV",
+            "leveldesign.pick_image_from_face": "UV",
+            "leveldesign.stretch_apply_image_to_face": "UV",
+            "leveldesign.stretch_pick_image_from_face": "UV",
+            "leveldesign.apply_uv_transform_to_face": "UV",
+            "leveldesign.pick_uv_transform_from_face": "UV",
+            "leveldesign.grid_scale_up": "Tools",
+            "leveldesign.grid_scale_down": "Tools",
+            "leveldesign.toggle_snap_mode": "Tools",
+            "leveldesign.line_mode_activate": "Tools",
+            "leveldesign.box_builder": "Tools",
+            "leveldesign.cylinder_builder": "Tools",
+            "leveldesign.prism_builder": "Tools",
+            "leveldesign.stair_builder": "Tools",
+            "leveldesign.stair_rotate_left": "Tools",
+            "leveldesign.stair_rotate_right": "Tools",
+            "leveldesign.cube_cut": "Tools",
+            "leveldesign.cylinder_cut": "Tools",
+            "leveldesign.prism_cut": "Tools",
+            "leveldesign.clip": "Tools",
+            "leveldesign.clip_previous_mode": "Tools",
+            "leveldesign.clip_next_mode": "Tools",
+            "leveldesign.prefab_browser": "Tools",
+            "leveldesign.texture_browser": "Tools",
+            "leveldesign.fix_material_mappings": "Tools",
+            "leveldesign.prefab_rotate_left": "Tools",
+            "leveldesign.prefab_rotate_right": "Tools",
+            "leveldesign.context_weld": "Tools",
+            "leveldesign.toggle_grid_overlay": "Tools",
+            "leveldesign.toggle_edge_length_display": "Tools",
+            "leveldesign.cursor_to_grid": "Tools",
+            "leveldesign.uv_transform_modal": "UV",
+            "leveldesign.uv_transform_pixel_snap": "UV",
+            "leveldesign.snapping_mode_dispatch": "UV",
+            "leveldesign.snapping_texture_edge_top": "UV",
+            "leveldesign.snapping_texture_edge_left": "UV",
+            "leveldesign.snapping_texture_edge_bottom": "UV",
+            "leveldesign.snapping_texture_edge_right": "UV",
+            "leveldesign.snapping_toggle_vertical_fit": "UV",
+            "leveldesign.snapping_toggle_horizontal_fit": "UV",
+            "leveldesign.snapping_reset_scale": "UV",
+        }
+
+        wm = context.window_manager
+        kc_addon = wm.keyconfigs.addon
+        kc_user = wm.keyconfigs.user
+        if kc_addon:
+            # Collect all addon keymap items with context
+            # We iterate addon keymaps to find our items, then look up the user's version
+            categorized_entries = {cat: [] for cat in CATEGORY_ORDER}
+            walk_nav_primary_kmi = None
+            walk_nav_all_user_kmis = []
+            context_menu_primary_kmi = None
+            context_menu_all_user_kmis = []
+            for km_addon in kc_addon.keymaps:
+                # Find the corresponding user keymap
+                km_user = kc_user.keymaps.get(km_addon.name) if kc_user else None
+
+                for kmi_addon in km_addon.keymap_items:
+                    # Check if this is our vertex paint menu remap
+                    is_vp_menu = (kmi_addon.idname == "wm.call_panel"
+                                  and hasattr(kmi_addon.properties, "name")
+                                  and kmi_addon.properties.name == 'VIEW3D_PT_paint_vertex_context_menu')
+                    if kmi_addon.idname.startswith("leveldesign.") or is_vp_menu:
+                        base_name = kmi_addon.name if kmi_addon.name else kmi_addon.idname
+
+                        # Find the matching user keymap item
+                        kmi_user = None
+                        if km_user:
+                            for kmi in km_user.keymap_items:
+                                if kmi.idname == kmi_addon.idname:
+                                    # For operators with properties, match on properties too
+                                    if kmi_addon.idname == "leveldesign.ortho_view":
+                                        if (hasattr(kmi.properties, "view_type") and
+                                            hasattr(kmi_addon.properties, "view_type") and
+                                            kmi.properties.view_type == kmi_addon.properties.view_type):
+                                            kmi_user = kmi
+                                            break
+                                    elif kmi_addon.idname == "leveldesign.select_linked":
+                                        if (hasattr(kmi.properties, "normal_mode") and
+                                            hasattr(kmi_addon.properties, "normal_mode") and
+                                            kmi.properties.normal_mode == kmi_addon.properties.normal_mode and
+                                            hasattr(kmi.properties, "extend") and
+                                            hasattr(kmi_addon.properties, "extend") and
+                                            kmi.properties.extend == kmi_addon.properties.extend):
+                                            kmi_user = kmi
+                                            break
+                                    elif kmi_addon.idname == "leveldesign.align_uv":
+                                        if (hasattr(kmi.properties, "direction") and
+                                            hasattr(kmi_addon.properties, "direction") and
+                                            kmi.properties.direction == kmi_addon.properties.direction):
+                                            kmi_user = kmi
+                                            break
+                                    elif kmi_addon.idname == "leveldesign.visible_select":
+                                        # Match on extend + loop properties
+                                        props_match = True
+                                        for prop_name in ("extend", "loop"):
+                                            if (hasattr(kmi_addon.properties, prop_name) and
+                                                hasattr(kmi.properties, prop_name)):
+                                                if getattr(kmi_addon.properties, prop_name) != getattr(kmi.properties, prop_name):
+                                                    props_match = False
+                                                    break
+                                        if props_match:
+                                            kmi_user = kmi
+                                            break
+                                    elif kmi_addon.idname == "leveldesign.visible_shortest_path_pick":
+                                        if (hasattr(kmi.properties, "use_fill") and
+                                            hasattr(kmi_addon.properties, "use_fill") and
+                                            kmi.properties.use_fill == kmi_addon.properties.use_fill):
+                                            kmi_user = kmi
+                                            break
+                                    elif kmi_addon.idname == "leveldesign.visible_object_select":
+                                        if (hasattr(kmi.properties, "extend") and
+                                            hasattr(kmi_addon.properties, "extend") and
+                                            kmi.properties.extend == kmi_addon.properties.extend):
+                                            kmi_user = kmi
+                                            break
+                                    else:
+                                        kmi_user = kmi
+                                        break
+
+                        # Use user keymap item if found, otherwise fall back to addon
+                        kmi_display = kmi_user if kmi_user else kmi_addon
+
+                        # Deduplicate walk navigation — show one combined entry for all modes
+                        if kmi_addon.idname == "leveldesign.walk_navigation_hold":
+                            walk_nav_all_user_kmis.append(kmi_display)
+                            if walk_nav_primary_kmi is None:
+                                walk_nav_primary_kmi = kmi_display
+                                category = CATEGORY_MAP.get(kmi_addon.idname, "Other")
+                                categorized_entries[category].append((base_name, km_addon, kmi_display))
+                            continue
+
+                        # Deduplicate context menu — show one combined entry for all modes
+                        if kmi_addon.idname == "leveldesign.context_menu":
+                            context_menu_all_user_kmis.append(kmi_display)
+                            if context_menu_primary_kmi is None:
+                                context_menu_primary_kmi = kmi_display
+                                category = CATEGORY_MAP.get(kmi_addon.idname, "Other")
+                                categorized_entries[category].append(("Context Menu (Right Click)", km_addon, kmi_display))
+                            continue
+
+                        # Check for property-based differentiation
+                        if kmi_addon.idname == "leveldesign.ortho_view" and hasattr(kmi_addon.properties, "view_type"):
+                            display_name = f"{base_name} - {kmi_addon.properties.view_type.title()}"
+                        elif kmi_addon.idname == "leveldesign.select_linked":
+                            mode = getattr(kmi_addon.properties, "normal_mode", "NONE")
+                            extend = getattr(kmi_addon.properties, "extend", False)
+                            if mode == 'EXPAND':
+                                suffix = "Expand"
+                            elif mode == 'SHRINK':
+                                suffix = "Shrink"
+                            elif extend:
+                                suffix = "Extend"
+                            else:
+                                suffix = "Linked"
+                            display_name = f"Select Linked ({suffix})"
+                        elif kmi_addon.idname == "leveldesign.visible_select":
+                            extend = getattr(kmi_addon.properties, "extend", False)
+                            loop = getattr(kmi_addon.properties, "loop", False)
+                            if loop and extend:
+                                suffix = "Extend Loop"
+                            elif loop:
+                                suffix = "Loop"
+                            elif extend:
+                                suffix = "Extend"
+                            else:
+                                suffix = "Click"
+                            display_name = f"Visible Select (Edit Mode) ({suffix})"
+                        elif kmi_addon.idname == "leveldesign.visible_shortest_path_pick":
+                            use_fill = getattr(kmi_addon.properties, "use_fill", False)
+                            suffix = "Filled Shortest Path" if use_fill else "Shortest Path"
+                            display_name = f"Visible Select (Edit Mode) ({suffix})"
+                        elif kmi_addon.idname == "leveldesign.visible_object_select":
+                            extend = getattr(kmi_addon.properties, "extend", False)
+                            display_name = f"Visible Select (Object Mode) ({'Extend' if extend else 'Click'})"
+                        elif kmi_addon.idname == "leveldesign.box_project":
+                            display_name = "Box Project"
+                        elif kmi_addon.idname == "leveldesign.align_uv":
+                            direction = getattr(kmi_addon.properties, "direction", "CENTER")
+                            display_name = f"UV Align ({direction.title()})"
+                        elif kmi_addon.idname == "leveldesign.fit_to_face":
+                            display_name = "Fit to Face"
+                        elif kmi_addon.idname == "leveldesign.select_invalid_uvs":
+                            display_name = "Select Invalid UVs"
+                        elif kmi_addon.idname == "leveldesign.snapping_mode_dispatch":
+                            display_name = "Face / Grid Snapping Mode"
+                        elif kmi_addon.idname == "leveldesign.uv_transform_pixel_snap":
+                            display_name = "UV Transform: Pixel Snap"
+                        elif kmi_addon.idname == "leveldesign.snapping_texture_edge_top":
+                            display_name = "Face / Grid Snapping: Texture Edge Top"
+                        elif kmi_addon.idname == "leveldesign.snapping_texture_edge_left":
+                            display_name = "Face / Grid Snapping: Texture Edge Left"
+                        elif kmi_addon.idname == "leveldesign.snapping_texture_edge_bottom":
+                            display_name = "Face / Grid Snapping: Texture Edge Bottom"
+                        elif kmi_addon.idname == "leveldesign.snapping_texture_edge_right":
+                            display_name = "Face / Grid Snapping: Texture Edge Right"
+                        elif kmi_addon.idname == "leveldesign.snapping_toggle_vertical_fit":
+                            display_name = "Face / Grid Snapping: Toggle Vertical Fit"
+                        elif kmi_addon.idname == "leveldesign.snapping_toggle_horizontal_fit":
+                            display_name = "Face / Grid Snapping: Toggle Horizontal Fit"
+                        elif kmi_addon.idname == "leveldesign.snapping_reset_scale":
+                            display_name = "Face / Grid Snapping: Reset Scale"
+                        elif is_vp_menu:
+                            display_name = "Vertex Paint Color Menu"
+                        else:
+                            # Add keymap context in brackets for mode-based differentiation
+                            display_name = f"{base_name} ({km_addon.name})"
+
+                        if is_vp_menu:
+                            category = REMAPPED_CATEGORY
+                        else:
+                            category = CATEGORY_MAP.get(kmi_addon.idname, "Other")
+                        categorized_entries[category].append((display_name, km_addon, kmi_display))
+
+            related_default_kmi = None
+            for keyconfig in (kc_user, wm.keyconfigs.default):
+                if not keyconfig:
+                    continue
+                keymap = keyconfig.keymaps.get("3D View")
+                if not keymap:
+                    continue
+                for keymap_item in keymap.keymap_items:
+                    if keymap_item.idname == "view3d.view_persportho":
+                        related_default_kmi = keymap_item
+                        categorized_entries[RELATED_DEFAULT_CATEGORY].append(
+                            ("Toggle Perspective / Orthographic", keymap, keymap_item)
+                        )
+                        break
+                if related_default_kmi:
+                    break
+
+            # Draw categorized entries
+            for category in CATEGORY_ORDER:
+                entries = categorized_entries[category]
+                if not entries:
+                    continue
+                entries.sort(key=lambda x: x[0].lower())
+
+                box = layout.box()
+                box.label(text=category)
+                if category == REMAPPED_CATEGORY:
+                    box.label(text="Blender default hotkeys that have been remapped by this addon", icon='INFO')
+                if category == RELATED_DEFAULT_CATEGORY:
+                    box.label(text="Blender default hotkeys that Anvil does not change but are useful here", icon='INFO')
+                if category == "Navigation":
+                    box.label(text="Walk navigation controls can be found in the Blender keymap menu at: 3D View -> View3D Walk Modal", icon='INFO')
+                for display_name, km, kmi in entries:
+                    row = box.row(align=True)
+                    row.label(text=display_name)
+                    row.prop(kmi, "map_type", text="")
+                    row.prop(kmi, "type", text="", full_event=True)
+                    row.prop(kmi, "active", text="", emboss=False)
+
+            # Sync walk navigation keybinds across all modes
+            if walk_nav_primary_kmi:
+                for kmi in walk_nav_all_user_kmis:
+                    if kmi is walk_nav_primary_kmi:
+                        continue
+                    if kmi.map_type != walk_nav_primary_kmi.map_type:
+                        kmi.map_type = walk_nav_primary_kmi.map_type
+                    for attr in ('type', 'value', 'ctrl', 'shift', 'alt', 'oskey', 'active'):
+                        if getattr(kmi, attr) != getattr(walk_nav_primary_kmi, attr):
+                            setattr(kmi, attr, getattr(walk_nav_primary_kmi, attr))
+                from .operators import walk_navigation
+                walk_navigation.sync_confirm_key(walk_nav_primary_kmi.type)
+
+            # Sync context menu keybinds across all modes
+            if context_menu_primary_kmi:
+                for kmi in context_menu_all_user_kmis:
+                    if kmi is context_menu_primary_kmi:
+                        continue
+                    if kmi.map_type != context_menu_primary_kmi.map_type:
+                        kmi.map_type = context_menu_primary_kmi.map_type
+                    for attr in ('type', 'value', 'ctrl', 'shift', 'alt', 'oskey', 'active'):
+                        if getattr(kmi, attr) != getattr(context_menu_primary_kmi, attr):
+                            setattr(kmi, attr, getattr(context_menu_primary_kmi, attr))
+
+
+def _ensure_default_material_handler(scene=None):
+    try:
+        import bpy
+        from .core import materials as core_materials
+        core_materials.ensure_default_material()
+    except Exception as exc:
+        print(f"Anvil Level Design: Default material creation failed: {exc}", flush=True)
+
+
+def _ensure_default_material_timer():
+    try:
+        import bpy
+        from .core import materials as core_materials
+        core_materials.ensure_default_material()
+    except Exception as exc:
+        print(f"Anvil Level Design: Default material creation failed: {exc}", flush=True)
+    return None
+
+
+def register():
+    global _version_warning_handle, _uv_editor_warning_handle
+    global _hotspot_uv_editor_warning_handle
+
+    version = ".".join(str(v) for v in bl_info["version"])
+    blender_version = ".".join(str(v) for v in bpy.app.version[:3])
+    print(
+        "Anvil Level Design: Registering "
+        f"addon_version={version} blender={blender_version} "
+        f"package={__package__!r}",
+        flush=True,
+    )
+    print("Anvil Level Design: Debug logging is DISABLED (toggle in Anvil Settings > Debug)", flush=True)
+
+    if not _VERSION_OK:
+        min_ver = ".".join(str(v) for v in _MINIMUM_BLENDER_VERSION)
+        cur_ver = ".".join(str(v) for v in bpy.app.version[:3])
+        print(f"Anvil Level Design: WARNING - Blender {cur_ver} is not supported. "
+              f"Minimum required version is {min_ver}.", flush=True)
+        _version_warning_handle = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_version_warning, (), 'WINDOW', 'POST_PIXEL'
+        )
+
+    bpy.utils.register_class(LEVELDESIGN_OT_restore_default_keybindings)
+    texture_browser_properties.register()
+    bpy.utils.register_class(LevelDesignPreferences)
+
+    _uv_editor_warning_handle = bpy.types.SpaceImageEditor.draw_handler_add(
+        _draw_uv_editor_warning, (), 'WINDOW', 'POST_PIXEL'
+    )
+    _hotspot_uv_editor_warning_handle = bpy.types.SpaceImageEditor.draw_handler_add(
+        _draw_hotspot_uv_editor_warning, (), 'WINDOW', 'POST_PIXEL'
+    )
+
+    # Make face orientation front face transparent so only back faces are highlighted
+    theme_3d = bpy.context.preferences.themes[0].view_3d
+    theme_3d.face_front = (theme_3d.face_front[0], theme_3d.face_front[1], theme_3d.face_front[2], 0.0)
+
+    properties.register()
+    handlers.register()
+    operators.register()
+    panels.register()
+    workspace.register()
+    hotspot_mapping.register()
+    dev_reload.start_watcher()
+
+
+def unregister():
+    global _version_warning_handle, _uv_editor_warning_handle
+    global _hotspot_uv_editor_warning_handle
+
+    dev_reload.stop_watcher()
+
+    if _version_warning_handle is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_version_warning_handle, 'WINDOW')
+        _version_warning_handle = None
+
+    if _uv_editor_warning_handle is not None:
+        bpy.types.SpaceImageEditor.draw_handler_remove(_uv_editor_warning_handle, 'WINDOW')
+        _uv_editor_warning_handle = None
+
+    if _hotspot_uv_editor_warning_handle is not None:
+        bpy.types.SpaceImageEditor.draw_handler_remove(
+            _hotspot_uv_editor_warning_handle,
+            'WINDOW',
+        )
+        _hotspot_uv_editor_warning_handle = None
+
+    hotspot_mapping.unregister()
+    workspace.unregister()
+    panels.unregister()
+    operators.unregister()
+    handlers.unregister()
+    properties.unregister()
+    bpy.utils.unregister_class(LevelDesignPreferences)
+    texture_browser_properties.unregister()
+    bpy.utils.unregister_class(LEVELDESIGN_OT_restore_default_keybindings)
+
+
+if __name__ == "__main__":
+    register()

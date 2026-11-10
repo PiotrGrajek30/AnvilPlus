@@ -1,0 +1,144 @@
+import bmesh
+import bpy
+
+from ..core.uv_projection import derive_transform_from_uvs
+from ..handlers.face_cache import get_last_selected_face_indices
+from .base_test import AnvilTestCase, _get_window
+from .helpers import (
+    create_textured_cube, edit_mesh_cache_is_current,
+    modal_operator_running, wait_for_condition, _get_context_override,
+)
+
+
+def _face_key(face):
+    """Stable identifier for a face based on its normal (cube faces are axis-aligned)."""
+    n = face.normal
+    return (round(n.x), round(n.y), round(n.z))
+
+
+def _snapshot_all_face_transforms(bm, uv_layer, ppm, me):
+    out = {}
+    for face in bm.faces:
+        out[_face_key(face)] = derive_transform_from_uvs(face, uv_layer, ppm, me)
+    return out
+
+
+def _geometry_matches_snapshot(obj, verts_by_face, tolerance):
+    bm = bmesh.from_edit_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    for face in bm.faces:
+        original_verts = verts_by_face[_face_key(face)]
+        if any(
+                (vert.co - original).length >= tolerance
+                for original, vert in zip(original_verts, face.verts)):
+            return False
+    return True
+
+
+class WorldScaleUVRestoreTest(AnvilTestCase):
+    """Cancelling a transform modal with ESC must restore UVs to their pre-modal state."""
+
+    def test_grab_modal_escape_cancel_restores_uvs(self):
+        obj = create_textured_cube(
+            "cube", scale_u=1.0, scale_v=1.0, use_box_project=False
+        )
+
+        ctx = _get_context_override()
+        with bpy.context.temp_override(**ctx):
+            bpy.ops.object.mode_set(mode='EDIT')
+
+        bm = bmesh.from_edit_mesh(obj.data)
+        bm.select_mode = {'FACE'}
+        for f in bm.faces:
+            f.select_set(False)
+
+        bm.faces.ensure_lookup_table()
+        target = next(f for f in bm.faces if f.normal.y > 0.9)
+        target.select_set(True)
+        bmesh.update_edit_mesh(obj.data)
+
+        yield from wait_for_condition(
+            lambda: (
+                edit_mesh_cache_is_current()
+                and len(get_last_selected_face_indices()) == 1
+                and sum(face.select for face in
+                        bmesh.from_edit_mesh(obj.data).faces) == 1
+            ),
+            "Edit Mode selection did not finish updating",
+        )
+
+        bm = bmesh.from_edit_mesh(obj.data)
+        bm.faces.ensure_lookup_table()
+        uv_layer = bm.loops.layers.uv[0]
+        ppm = bpy.context.scene.level_design_props.pixels_per_meter
+        me = obj.data
+
+        orig_verts_by_key = {
+            _face_key(f): [v.co.copy() for v in f.verts] for f in bm.faces
+        }
+        orig_transforms = _snapshot_all_face_transforms(bm, uv_layer, ppm, me)
+
+        window = _get_window()
+        mx, my = self._get_3d_viewport_center()
+
+        with bpy.context.temp_override(**self._get_3d_view_context()):
+            result = bpy.ops.transform.translate('INVOKE_DEFAULT')
+        self.assertEqual(result, {'RUNNING_MODAL'})
+        yield from wait_for_condition(
+            lambda: modal_operator_running('TRANSFORM_OT_translate'),
+            "Grab did not enter modal state",
+        )
+        window.event_simulate(type='MOUSEMOVE', value='NOTHING', x=mx, y=my)
+        yield
+        yield from self._simulate_key_tap('X')
+        yield from self._simulate_number(2)
+        yield from wait_for_condition(
+            lambda: not _geometry_matches_snapshot(
+                obj, orig_verts_by_key, 1e-4),
+            "Grab did not move the selected geometry",
+        )
+
+        window.event_simulate(type='ESC', value='PRESS', x=mx, y=my)
+        yield
+        window.event_simulate(type='ESC', value='RELEASE', x=mx, y=my)
+        yield from wait_for_condition(
+            lambda: (
+                not modal_operator_running('TRANSFORM_OT_translate')
+                and _geometry_matches_snapshot(
+                    obj, orig_verts_by_key, 1e-4)
+            ),
+            "Cancelling Grab did not restore the original geometry",
+        )
+
+        bm = bmesh.from_edit_mesh(obj.data)
+        bm.faces.ensure_lookup_table()
+
+        for f in bm.faces:
+            key = _face_key(f)
+            orig_verts = orig_verts_by_key[key]
+            for orig_v, v in zip(orig_verts, f.verts):
+                self.assertLess(
+                    (v.co - orig_v).length, 1e-4,
+                    f"Geometry for face {key} did not revert after ESC; "
+                    f"cannot verify UV restore",
+                )
+
+        final_transforms = _snapshot_all_face_transforms(bm, uv_layer, ppm, me)
+
+        for key, orig_t in orig_transforms.items():
+            final_t = final_transforms[key]
+            self.assertAlmostEqual(
+                final_t['scale_u'], orig_t['scale_u'], places=3,
+                msg=f"face {key} scale_u not restored: orig={orig_t} final={final_t}")
+            self.assertAlmostEqual(
+                final_t['scale_v'], orig_t['scale_v'], places=3,
+                msg=f"face {key} scale_v not restored: orig={orig_t} final={final_t}")
+            self.assertAlmostEqual(
+                final_t['rotation'], orig_t['rotation'], places=2,
+                msg=f"face {key} rotation not restored: orig={orig_t} final={final_t}")
+            self.assertAlmostEqual(
+                final_t['offset_x'], orig_t['offset_x'], places=3,
+                msg=f"face {key} offset_x not restored: orig={orig_t} final={final_t}")
+            self.assertAlmostEqual(
+                final_t['offset_y'], orig_t['offset_y'], places=3,
+                msg=f"face {key} offset_y not restored: orig={orig_t} final={final_t}")

@@ -1,0 +1,120 @@
+from . import texture_apply
+from . import image_creation
+from . import hotspot_apply
+from . import face_uv_mode
+from . import grid_snapping_mode
+from . import grid_tools
+from . import walk_navigation
+from . import ortho_navigation
+from . import glb_export
+from . import gltf_export_extension
+from . import material_tools
+from . import material_mappings
+from . import pixels_per_meter
+from . import modal_draw
+from . import cube_cut
+from . import cylinder_cut
+from . import prism_cut
+from . import clip
+from . import box_builder
+from . import cylinder_builder
+from . import prism_builder
+from . import stair_builder
+from . import visible_select
+from . import select_linked
+from . import uv_select_invalid
+from . import weld
+from . import vertex_paint_color_picker
+from . import overlap_check
+from . import grid_overlay
+from . import viewport_measurements
+from . import fixed_hotspot_overlay
+from . import library_object_overlay
+from . import uv_transform_modal
+from . import uv_randomize_offset
+from . import cursor_to_grid
+from . import reload_addon
+from .. import prefabs
+from .. import texture_browser
+
+
+def register():
+    texture_apply.register()
+    image_creation.register()
+    hotspot_apply.register()
+    face_uv_mode.register()
+    grid_snapping_mode.register()
+    grid_tools.register()
+    walk_navigation.register()
+    ortho_navigation.register()
+    glb_export.register()
+    gltf_export_extension.register()
+    material_tools.register()
+    material_mappings.register()
+    pixels_per_meter.register()
+    modal_draw.register()
+    cube_cut.register()
+    cylinder_cut.register()
+    prism_cut.register()
+    clip.register()
+    box_builder.register()
+    cylinder_builder.register()
+    prism_builder.register()
+    stair_builder.register()
+    visible_select.register()
+    select_linked.register()
+    uv_select_invalid.register()
+    weld.register()
+    vertex_paint_color_picker.register()
+    overlap_check.register()
+    grid_overlay.register()
+    viewport_measurements.register()
+    fixed_hotspot_overlay.register()
+    library_object_overlay.register()
+    uv_transform_modal.register()
+    uv_randomize_offset.register()
+    cursor_to_grid.register()
+    reload_addon.register()
+    texture_browser.register()
+    prefabs.register()
+
+
+def unregister():
+    prefabs.unregister()
+    texture_browser.unregister()
+    reload_addon.unregister()
+    cursor_to_grid.unregister()
+    uv_randomize_offset.unregister()
+    uv_transform_modal.unregister()
+    library_object_overlay.unregister()
+    fixed_hotspot_overlay.unregister()
+    viewport_measurements.unregister()
+    grid_overlay.unregister()
+    overlap_check.unregister()
+    vertex_paint_color_picker.unregister()
+    weld.unregister()
+    uv_select_invalid.unregister()
+    select_linked.unregister()
+    visible_select.unregister()
+    stair_builder.unregister()
+    prism_builder.unregister()
+    cylinder_builder.unregister()
+    box_builder.unregister()
+    clip.unregister()
+    prism_cut.unregister()
+    cylinder_cut.unregister()
+    cube_cut.unregister()
+    modal_draw.unregister()
+    pixels_per_meter.unregister()
+    material_mappings.unregister()
+    material_tools.unregister()
+    gltf_export_extension.unregister()
+    glb_export.unregister()
+    ortho_navigation.unregister()
+    walk_navigation.unregister()
+    grid_tools.unregister()
+    grid_snapping_mode.unregister()
+    face_uv_mode.unregister()
+    hotspot_apply.unregister()
+    image_creation.unregister()
+    texture_apply.unregister()

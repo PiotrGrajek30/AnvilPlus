@@ -1,0 +1,1304 @@
+import bmesh
+import bpy
+from bpy.types import Panel, Operator
+
+from ..core.face_id import get_selected_face_count
+from ..core.materials import (
+    MaterialMappingConflictError,
+    get_image_from_material,
+    get_texture_node_from_material,
+    find_material_with_image,
+    get_principled_bsdf_from_material,
+    is_texture_alpha_connected,
+    is_vertex_colors_enabled,
+)
+from ..core.material_shader import validate_material_shader
+from ..core.library import is_library_object
+from ..core.workspace_check import is_level_design_workspace
+from ..core.hotspot_queries import object_has_hotspot_material
+from ..operators.grid_tools import get_unit_label, get_snap_mode_icon
+from ..handlers import (
+    get_previous_image,
+    get_active_face_material,
+    get_multi_face_mode,
+    is_multi_face_unset_scale,
+    is_multi_face_unset_rotation,
+    is_multi_face_unset_offset,
+    get_selected_faces_share_material,
+    get_all_selected_hotspot,
+    get_any_selected_hotspot,
+    get_any_selected_fixed_hotspot,
+)
+
+
+def _is_library_mesh_object(obj):
+    return obj is not None and obj.type == 'MESH' and is_library_object(obj)
+
+
+def _image_collection_filepath(image):
+    if image is None:
+        return ""
+    filepath = image.filepath_from_user()
+    if not filepath:
+        return ""
+    return bpy.path.abspath(filepath)
+
+
+def _draw_image_collection_header(layout, image, label_enabled):
+    image_filepath = _image_collection_filepath(image)
+    row = layout.row(align=True)
+    label_row = row.row(align=True)
+    label_row.enabled = label_enabled
+    label_row.label(text=image.name)
+    add_row = row.row(align=True)
+    add_row.enabled = bool(image_filepath)
+    add_row.operator_context = 'INVOKE_DEFAULT'
+    add_op = add_row.operator(
+        "leveldesign.texture_browser_add_file_to_collection",
+        text="",
+        icon='ADD',
+    )
+    add_op.filepath = image_filepath
+
+
+def _draw_texture_preview_placeholder(layout, text, icon):
+    box = layout.box()
+    for row_index in range(8):
+        row = box.row()
+        if row_index == 3:
+            row.alignment = 'CENTER'
+            row.label(text=text, icon=icon)
+        else:
+            row.label(text="")
+
+
+def _texture_preview_state(mode, mesh_select_mode, obj):
+    import bmesh
+
+    in_face_mode = mode == 'EDIT_MESH' and mesh_select_mode[2]
+    material = get_active_face_material(obj, mode, mesh_select_mode[2])
+    if in_face_mode and get_multi_face_mode():
+        if obj is not None and obj.type == 'MESH':
+            bm = bmesh.from_edit_mesh(obj.data)
+            bm.faces.ensure_lookup_table()
+            shared, material = get_selected_faces_share_material(bm, obj.data)
+            if not shared:
+                return None, None, True
+    if material is not None:
+        return get_image_from_material(material), material, False
+    return get_previous_image(), None, False
+
+
+def _preview_material_for_image(image):
+    try:
+        return find_material_with_image(image)
+    except MaterialMappingConflictError:
+        return None
+
+
+def _draw_status_tool_button(layout, operator, icon, enabled):
+    button = layout.row(align=True)
+    button.enabled = enabled
+    button.operator(operator, text="", icon=icon)
+
+
+def _draw_status_tool_header(layout, text):
+    header = layout.row(align=True)
+    header.alignment = 'CENTER'
+    header.scale_y = 0.5
+    header.label(text=text)
+
+
+class LEVELDESIGN_PT_status_panel(Panel):
+    """Status Panel"""
+
+    bl_label = "Status"
+    bl_idname = "LEVELDESIGN_PT_status_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Meshes'
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw(self, context):
+        layout = self.layout
+
+        props = context.scene.level_design_props
+        anvil_scale = props.anvil_grid_scale
+        if anvil_scale == 0.0:
+            anvil_scale = 1.0
+        unit_settings = context.scene.unit_settings
+        label = get_unit_label(unit_settings.system, unit_settings.length_unit)
+
+        snap_icon = get_snap_mode_icon(context.tool_settings)
+        preferences_system = context.preferences.system
+        widget_unit = (
+            int(18.0 * preferences_system.ui_scale + 0.5)
+            + (2 * int(preferences_system.pixel_size))
+        )
+        # Reserve a fixed-width area at the right so the status boxes absorb
+        # any extra sidebar width instead of the icon columns spreading out.
+        panel_content_width = max(
+            float(widget_unit),
+            context.region.width - (widget_unit * 1.3),
+        )
+        fixed_tool_area_width = widget_unit * 1.95
+        status_factor = max(
+            0.5,
+            1.0 - (fixed_tool_area_width / panel_content_width),
+        )
+        content = layout.split(factor=status_factor, align=True)
+        status = content.column()
+        box = status.box()
+
+        # Compute pixel size for the current grid scale
+        ppm = props.pixels_per_meter
+        grid_px = anvil_scale * ppm
+        # Format as integer if whole number
+        px_str = f"{int(grid_px)}px" if grid_px == int(grid_px) else f"{grid_px:.1f}px"
+
+        row = box.row(align=True)
+        grid_text = f"Grid Size: {anvil_scale}  ({px_str})"
+        if label:
+            grid_text = f"{grid_text}  ({label})"
+        grid_text = f"{grid_text}  [ / ]"
+        row.label(text=grid_text, icon=snap_icon)
+        overlay_icon = 'HIDE_OFF' if props.show_grid_overlay else 'HIDE_ON'
+        row.operator(
+            "leveldesign.toggle_grid_overlay",
+            text="",
+            icon=overlay_icon,
+            emboss=False,
+        )
+        row.operator_context = 'INVOKE_DEFAULT'
+        row.operator(
+            "leveldesign.cursor_to_grid",
+            text="",
+            icon='PIVOT_CURSOR',
+            emboss=False,
+        )
+
+        from ..operators.context_action import get_context_action_summary
+        action = get_context_action_summary(
+            context.active_object, context.mode,
+        )
+        box = status.box()
+        box.label(text="Context Action")
+        if action.kind != 'NONE':
+            box.operator(
+                "leveldesign.context_weld",
+                text=f"{action.label}  [ W ]",
+                icon=action.icon,
+            )
+        else:
+            row = box.row()
+            row.enabled = False
+            row.label(text="No action available", icon='AUTOMERGE_ON')
+
+        tool_area = content.row(align=True)
+        tool_area.alignment = 'RIGHT'
+        tool_area.separator(factor=0.2)
+        tools = tool_area.column(align=True)
+        # Keep the icon strip fixed at two button-widths as the sidebar grows.
+        tools.ui_units_x = 1.95
+        tools.scale_y = 0.98
+        tools.operator_context = 'INVOKE_DEFAULT'
+        # Compensate for the aligned split's center pixel so both sides render
+        # at the same width.
+        tool_split_factor = 0.52
+
+        tool_columns = tools.split(factor=tool_split_factor, align=True)
+        builders = tool_columns.column(align=True)
+        cutters = tool_columns.column(align=True)
+
+        # Blender left-biases the first label in this asymmetric split. A
+        # leading glyph-space centers it over the make-button column.
+        _draw_status_tool_header(builders, " \u200a+")
+        _draw_status_tool_header(cutters, "-")
+
+        _draw_status_tool_button(
+            builders, "leveldesign.box_builder", 'MESH_CUBE', True
+        )
+        _draw_status_tool_button(
+            cutters, "leveldesign.cube_cut", 'MESH_CUBE', True
+        )
+
+        _draw_status_tool_button(
+            builders,
+            "leveldesign.cylinder_builder",
+            'MESH_CYLINDER',
+            True,
+        )
+        _draw_status_tool_button(
+            cutters,
+            "leveldesign.cylinder_cut",
+            'MESH_CYLINDER',
+            True,
+        )
+
+        _draw_status_tool_button(
+            builders,
+            "leveldesign.prism_builder",
+            'MOD_TRIANGULATE',
+            True,
+        )
+        _draw_status_tool_button(
+            cutters,
+            "leveldesign.prism_cut",
+            'MOD_TRIANGULATE',
+            True,
+        )
+
+        _draw_status_tool_button(
+            builders,
+            "leveldesign.stair_builder",
+            'IPO_CONSTANT',
+            True,
+        )
+        _draw_status_tool_button(
+            cutters,
+            "leveldesign.clip",
+            'MOD_BOOLEAN',
+            True,
+        )
+
+
+class LEVELDESIGN_OT_set_active_render_uv(Operator):
+    """Set the active render UV map"""
+    bl_idname = "leveldesign.set_active_render_uv"
+    bl_label = "Set Active Render UV"
+    bl_options = {'INTERNAL'}
+
+    uv_name: bpy.props.StringProperty()
+
+    def execute(self, context):
+        obj = context.object
+        if not obj or obj.type != 'MESH' or is_library_object(obj):
+            return {'CANCELLED'}
+
+        me = obj.data
+        for uv_map in me.uv_layers:
+            uv_map.active_render = (uv_map.name == self.uv_name)
+
+        # Sync settings now that we're in an operator context (writing allowed)
+        from ..core.uv_layers import sync_uv_map_settings
+        sync_uv_map_settings(obj)
+
+        return {'FINISHED'}
+
+
+class LEVELDESIGN_OT_toggle_uv_lock(Operator):
+    """Toggle UV map lock (sticker mode)"""
+    bl_idname = "leveldesign.toggle_uv_lock"
+    bl_label = "Toggle UV Lock"
+    bl_options = {'INTERNAL'}
+
+    uv_name: bpy.props.StringProperty()
+
+    def execute(self, context):
+        obj = context.object
+        if not obj or obj.type != 'MESH' or is_library_object(obj):
+            return {'CANCELLED'}
+
+        from ..core.uv_layers import sync_uv_map_settings
+        sync_uv_map_settings(obj)
+
+        for setting in obj.anvil_uv_map_settings:
+            if setting.name == self.uv_name:
+                setting.locked = not setting.locked
+                return {'FINISHED'}
+
+        return {'CANCELLED'}
+
+
+class LEVELDESIGN_OT_toggle_auto_hotspot(Operator):
+    """Toggle automatic hotspot mapping after geometry changes"""
+    bl_idname = "leveldesign.toggle_auto_hotspot"
+    bl_label = "Toggle Auto Hotspot"
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context):
+        obj = context.object
+        if not obj or obj.type != 'MESH' or is_library_object(obj):
+            return {'CANCELLED'}
+        obj.anvil_auto_hotspot = not obj.anvil_auto_hotspot
+        return {'FINISHED'}
+
+
+class LEVELDESIGN_OT_toggle_combine_faces(Operator):
+    """Toggle multi-face islands during hotspot mapping"""
+    bl_idname = "leveldesign.toggle_combine_faces"
+    bl_label = "Toggle Combine Faces"
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context):
+        obj = context.object
+        if not obj or obj.type != 'MESH' or is_library_object(obj):
+            return {'CANCELLED'}
+        obj.anvil_allow_combined_faces = not obj.anvil_allow_combined_faces
+        return {'FINISHED'}
+
+
+class LEVELDESIGN_OT_toggle_fixed_hotspot(Operator):
+    """Toggle fixed hotspot flag on selected faces"""
+    bl_idname = "leveldesign.toggle_fixed_hotspot"
+    bl_label = "Toggle Fixed Hotspot"
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.object and context.object.type == 'MESH'
+                and not is_library_object(context.object)
+                and context.mode == 'EDIT_MESH')
+
+    def execute(self, context):
+        import bmesh
+        from ..core.face_id import get_fixed_hotspot_layer
+
+        obj = context.object
+        me = obj.data
+        bm = bmesh.from_edit_mesh(me)
+
+        fixed_layer = get_fixed_hotspot_layer(bm)
+        selected_faces = [f for f in bm.faces if f.select]
+
+        if not selected_faces:
+            return {'CANCELLED'}
+
+        # If any selected face is fixed, clear all; otherwise set all
+        any_fixed = any(f[fixed_layer] != 0 for f in selected_faces)
+        new_value = 0 if any_fixed else 1
+        for f in selected_faces:
+            f[fixed_layer] = new_value
+
+        bmesh.update_edit_mesh(me)
+
+        from ..handlers import update_ui_from_selection
+        update_ui_from_selection(context)
+
+        from ..operators.fixed_hotspot_overlay import invalidate_overlay
+        invalidate_overlay()
+
+        return {'FINISHED'}
+
+
+class LEVELDESIGN_PT_uv_lock_panel(Panel):
+    """UV Maps - per-layer lock/unlock"""
+
+    bl_label = ""
+    bl_idname = "LEVELDESIGN_PT_uv_lock_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Meshes'
+
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw_header(self, context):
+        in_edit_mode = context.mode == 'EDIT_MESH'
+        library_object = _is_library_mesh_object(context.object)
+        # icon = 'LAYER_ACTIVE' if in_edit_mode else 'LAYER_USED'
+        text = "UV Maps"
+        if library_object:
+            text += "  \u2192 Select Local Object"
+        elif not in_edit_mode:
+            text += "  \u2192 Edit Mode"
+        self.layout.label(text=text)  # icon=icon
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        in_edit_mode = context.mode == 'EDIT_MESH'
+        has_mesh = obj and obj.type == 'MESH'
+        library_object = _is_library_mesh_object(obj)
+
+        if not has_mesh:
+            row = layout.row()
+            row.enabled = False
+            row.label(text="No mesh object")
+            return
+
+        me = obj.data
+        if not me.uv_layers:
+            row = layout.row()
+            row.enabled = False
+            row.label(text="No UV maps")
+            return
+
+        if len(me.uv_layers) > 1:
+            layout.label(text="Multi-UV maps is experimental!", icon='ERROR')
+
+        settings = obj.anvil_uv_map_settings
+        # Build a lookup of existing settings (read-only in draw context)
+        settings_by_name = {s.name: s for s in settings}
+
+        for uv_map in me.uv_layers:
+            row = layout.row(align=True)
+            row.enabled = in_edit_mode and not library_object
+
+            setting = settings_by_name.get(uv_map.name)
+
+            # Render active icon (click to set)
+            icon_sub = row.row(align=True)
+            icon_sub.scale_x = 1.2
+            op = icon_sub.operator(
+                "leveldesign.set_active_render_uv",
+                text="",
+                icon='RESTRICT_RENDER_OFF' if uv_map.active_render else 'RESTRICT_RENDER_ON',
+                depress=uv_map.active_render,
+            )
+            op.uv_name = uv_map.name
+
+            row.separator(factor=0.5)
+
+            # UV map name
+            row.label(text=uv_map.name)
+
+            # Lock toggle
+            is_locked = setting.locked if setting is not None else False
+            op = row.operator(
+                "leveldesign.toggle_uv_lock",
+                text="Locked" if is_locked else "Unlocked",
+                icon='LOCKED' if is_locked else 'UNLOCKED',
+                depress=is_locked,
+            )
+            op.uv_name = uv_map.name
+
+
+class LEVELDESIGN_PT_uv_settings_panel(Panel):
+    """UV Settings (Scale, Rotation, Offset)"""
+
+    bl_label = ""
+    bl_idname = "LEVELDESIGN_PT_uv_settings_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Meshes'
+
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw_header(self, context):
+        in_edit_mode = context.mode == 'EDIT_MESH'
+        library_object = _is_library_mesh_object(context.object)
+        in_face_mode = (in_edit_mode and
+                        context.tool_settings.mesh_select_mode[2])
+        has_selection = in_face_mode and get_selected_face_count(context) > 0
+        all_hotspot = has_selection and get_all_selected_hotspot()
+        # active = has_selection and not all_hotspot
+        # icon = 'LAYER_ACTIVE' if active else 'LAYER_USED'
+        text = "UV Settings"
+        if library_object:
+            text += "  \u2192 Select Local Object"
+        elif not in_edit_mode:
+            text += "  \u2192 Edit Mode"
+        elif not has_selection:
+            text += "  \u2192 Select Faces"
+        elif all_hotspot:
+            text += "  \u2192 Select Non-Hotspots"
+        self.layout.label(text=text)  # icon=icon
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.level_design_props
+        in_face_mode = (context.mode == 'EDIT_MESH' and
+                        context.tool_settings.mesh_select_mode[2])
+        has_selection = in_face_mode and get_selected_face_count(context) > 0
+        multi_face = has_selection and get_multi_face_mode()
+        all_hotspot = has_selection and get_all_selected_hotspot()
+        obj = context.object
+        library_object = _is_library_mesh_object(obj)
+
+        # Warn if non-uniform object scale paired with non-uniform UV scale
+        if obj and obj.type == 'MESH':
+            s = obj.scale
+            obj_non_uniform = (abs(s.x - s.y) > 1e-4
+                               or abs(s.x - s.z) > 1e-4)
+            uv_non_uniform = abs(props.texture_scale_u
+                                 - props.texture_scale_v) > 1e-4
+            if obj_non_uniform and uv_non_uniform:
+                col_warn = layout.column(align=True)
+                col_warn.label(
+                    text="Non-Uniform object scale.",
+                    icon='ERROR',
+                )
+                col_warn.label(
+                    text="Apply Object Scale (Ctrl+A).",
+                )
+
+        col = layout.column(align=True)
+
+        col.enabled = has_selection and not all_hotspot and not library_object
+
+        # Scale row with link toggle
+        scale_row = col.row(align=True)
+        scale_row.alert = multi_face and is_multi_face_unset_scale()
+        scale_row.prop(props, "texture_scale_u")
+        scale_row.prop(props, "texture_scale_v")
+        scale_row.prop(
+            props,
+            "texture_scale_linked",
+            text="",
+            icon='LINKED' if props.texture_scale_linked else 'UNLINKED',
+        )
+
+        # Rotation
+        rot_row = col.row(align=True)
+        rot_row.alert = multi_face and is_multi_face_unset_rotation()
+        rot_row.prop(props, "texture_rotation")
+
+        # Offset row
+        off_row = col.row(align=True)
+        off_row.alert = multi_face and is_multi_face_unset_offset()
+        off_row.prop(props, "texture_offset_x")
+        op = off_row.operator(
+            "leveldesign.randomize_uv_offset",
+            text="",
+            icon='FILE_REFRESH',
+        )
+        op.axis = 'X'
+        off_row.prop(props, "texture_offset_y")
+        op = off_row.operator(
+            "leveldesign.randomize_uv_offset",
+            text="",
+            icon='FILE_REFRESH',
+        )
+        op.axis = 'Y'
+
+
+class LEVELDESIGN_PT_hotspotting_panel(Panel):
+    """Hotspotting Controls"""
+
+    bl_label = ""
+    bl_idname = "LEVELDESIGN_PT_hotspotting_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Meshes'
+
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw_header(self, context):
+        obj = context.object
+        in_edit_mode = context.mode == 'EDIT_MESH'
+        has_obj = obj and obj.type == 'MESH'
+        library_object = _is_library_mesh_object(obj)
+        obj_selected = has_obj and obj.select_get()
+        has_hotspot_mat = has_obj and object_has_hotspot_material(obj)
+        any_hotspot = get_any_selected_hotspot()
+
+        text = "Hotspotting"
+        if library_object:
+            text += "  \u2192 Select Local Object"
+            active = False
+        elif not in_edit_mode:
+            # Object mode
+            # #BUG: if a hotspot material exists on the object but is not
+            # assigned to any face, this still shows as enabled.
+            if not obj_selected or not has_hotspot_mat:
+                text += "  \u2192 Select Hotspot Object"
+                active = False
+            else:
+                active = True
+        else:
+            # Edit mode
+            in_face_mode = context.tool_settings.mesh_select_mode[2]
+            has_selection = in_face_mode and get_selected_face_count(context) > 0
+            if not has_hotspot_mat:
+                text += "  \u2192 Add Hotspot Face"
+                active = False
+            elif has_selection and not any_hotspot:
+                text += "  \u2192 Select Hotspots"
+                active = False
+            else:
+                active = has_hotspot_mat
+        # icon = 'LAYER_ACTIVE' if active else 'LAYER_USED'
+        self.layout.label(text=text)  # icon=icon
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        in_edit_mode = context.mode == 'EDIT_MESH'
+        has_obj = obj and obj.type == 'MESH'
+        library_object = _is_library_mesh_object(obj)
+        obj_selected = has_obj and obj.select_get()
+        has_hotspot_mat = has_obj and object_has_hotspot_material(obj)
+        any_hotspot = get_any_selected_hotspot()
+
+        # Determine if panel contents should be disabled
+        panel_disabled = False
+        if library_object:
+            panel_disabled = True
+        elif not in_edit_mode:
+            if not obj_selected or not has_hotspot_mat:
+                panel_disabled = True
+        else:
+            in_face_mode = context.tool_settings.mesh_select_mode[2]
+            has_selection = in_face_mode and get_selected_face_count(context) > 0
+            if not has_hotspot_mat:
+                panel_disabled = True
+            elif has_selection and not any_hotspot:
+                panel_disabled = True
+
+        main_col = layout.column()
+        main_col.enabled = not panel_disabled
+        if has_obj:
+            row = main_col.row(align=True)
+            row.operator(
+                "leveldesign.toggle_auto_hotspot",
+                text="Auto Hotspot",
+                icon='CHECKBOX_HLT' if obj.anvil_auto_hotspot else 'CHECKBOX_DEHLT',
+                depress=obj.anvil_auto_hotspot,
+            )
+            row.operator(
+                "leveldesign.toggle_combine_faces",
+                text="Combine Faces",
+                icon='CHECKBOX_HLT' if obj.anvil_allow_combined_faces else 'CHECKBOX_DEHLT',
+                depress=obj.anvil_allow_combined_faces,
+            )
+
+            main_col.label(text="Constraints")
+            main_col.prop(obj, "anvil_hotspot_seam_angle", text="Combine Face Angle Limit", slider=True)
+            main_col.prop(obj, "anvil_hotspot_size_weight", text="\u2190 Aspect / Area \u2192")
+        else:
+            main_col.label(text="No mesh object")
+
+        layout.separator()
+        in_face_mode = (context.mode == 'EDIT_MESH' and
+                        context.tool_settings.mesh_select_mode[2])
+        has_face_selection = in_face_mode and get_selected_face_count(context) > 0
+        if has_face_selection:
+            is_fixed = get_any_selected_fixed_hotspot()
+        else:
+            is_fixed = False
+        row = layout.row(align=True)
+        choose_sub = row.row(align=True)
+        choose_sub.enabled = not panel_disabled
+        choose_sub.scale_x = 1.3
+        choose_sub.operator(
+            "leveldesign.hotspot_palette",
+            text="Choose Hotspot",
+            icon='IMGDISPLAY',
+        )
+        fixed_sub = row.row(align=True)
+        fixed_sub.enabled = not panel_disabled and has_face_selection
+        fixed_sub.operator(
+            "leveldesign.toggle_fixed_hotspot",
+            text="Fixed",
+            icon='CHECKBOX_HLT' if is_fixed else 'CHECKBOX_DEHLT',
+            depress=is_fixed,
+        )
+        props = context.scene.level_design_props
+        overlay_icon = 'HIDE_OFF' if props.show_fixed_hotspot_overlay else 'HIDE_ON'
+        overlay_sub = row.row(align=True)
+        overlay_sub.enabled = not library_object
+        overlay_sub.operator(
+            "leveldesign.toggle_fixed_hotspot_overlay",
+            text="",
+            icon=overlay_icon,
+            emboss=False,
+        )
+
+        layout.separator()
+        randomise_row = layout.row()
+        randomise_row.enabled = not panel_disabled
+        randomise_row.operator(
+            "leveldesign.apply_hotspot",
+            text="Randomise Hotspots",
+            icon='UV_DATA',
+        )
+
+
+class LEVELDESIGN_PT_uv_shortcuts_panel(Panel):
+    """UV Shortcuts (Projection and Alignment)"""
+
+    bl_label = ""
+    bl_idname = "LEVELDESIGN_PT_uv_shortcuts_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Meshes'
+
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw_header(self, context):
+        text = "UV Shortcuts"
+        if _is_library_mesh_object(context.object):
+            text += "  \u2192 Select Local Object"
+        self.layout.label(text=text)
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.level_design_props
+
+        # Projection with scale
+        obj = context.object
+        has_mesh = obj is not None and obj.type == 'MESH'
+        library_object = _is_library_mesh_object(obj)
+        row = layout.row(align=True)
+        row.enabled = has_mesh and not library_object
+        row.operator(
+            "leveldesign.box_project",
+            text="Box Project",
+            icon='MOD_UVPROJECT',
+        )
+        row.prop(props, "box_project_scale", text="")
+
+        # Alignment
+        row = layout.row(align=True)
+        row.enabled = has_mesh and not library_object
+        row.operator(
+            "leveldesign.align_uv", text="Center", icon='ALIGN_CENTER'
+        ).direction = 'CENTER'
+        row.operator(
+            "leveldesign.fit_to_face",
+            text="Fit to Face",
+            icon='FULLSCREEN_ENTER',
+        )
+
+
+class LEVELDESIGN_PT_texture_preview_panel(Panel):
+    """Texture Preview"""
+
+    bl_label = "Texture Preview"
+    bl_idname = "LEVELDESIGN_PT_texture_preview_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Meshes'
+
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw_header_preset(self, context):
+        image, selected_material, _mixed = _texture_preview_state(
+            context.mode,
+            context.tool_settings.mesh_select_mode,
+            context.object,
+        )
+        image_filepath = _image_collection_filepath(image)
+        material = (
+            selected_material
+            if selected_material is not None
+            else _preview_material_for_image(image)
+        )
+        validation = (
+            validate_material_shader(material, image)
+            if material is not None and image is not None
+            else None
+        )
+        repair_available = validation is not None and (
+            not validation.is_canonical
+            or (validation.has_shader_images and not validation.primary_image_in_shader)
+        )
+        repair_row = self.layout.row(align=True)
+        repair_row.enabled = repair_available
+        repair = repair_row.operator(
+            "leveldesign.repair_material_shader",
+            text="",
+            icon='TOOL_SETTINGS',
+            emboss=False,
+        )
+        repair.material_name = material.name if material is not None else ""
+        locate_row = self.layout.row(align=True)
+        locate_row.enabled = bool(image_filepath)
+        locate_op = locate_row.operator(
+            "leveldesign.texture_browser_locate_file",
+            text="",
+            icon='VIEWZOOM',
+            emboss=False,
+        )
+        locate_op.filepath = image_filepath
+        self.layout.operator(
+            "leveldesign.reload_material_images",
+            text="",
+            icon='FILE_REFRESH',
+            emboss=False,
+        )
+        self.layout.separator(factor=0.4)
+
+    def draw(self, context):
+        layout = self.layout
+        image, selected_material, mixed_materials = _texture_preview_state(
+            context.mode,
+            context.tool_settings.mesh_select_mode,
+            context.object,
+        )
+
+        if mixed_materials:
+            layout.label(text="Multiple textures")
+            box = layout.box()
+            box.scale_y = 8.0
+            box.label(text="")
+        elif selected_material is not None and image is None:
+            layout.label(text=selected_material.name, icon='MATERIAL')
+            _draw_texture_preview_placeholder(
+                layout,
+                "Unmanaged Material",
+                'INFO',
+            )
+        elif image is not None and selected_material is not None:
+            mat = selected_material
+            validation = (
+                validate_material_shader(mat, image)
+                if mat is not None
+                else None
+            )
+            _draw_image_collection_header(layout, image, True)
+
+            if validation is not None and (
+                    validation.has_shader_images
+                    and not validation.primary_image_in_shader):
+                warning = layout.row(align=True)
+                warning.operator(
+                    "leveldesign.material_primary_image_warning",
+                    text="Primary image is not used by shader",
+                    emboss=False,
+                )
+
+            if image.preview:
+                icon_id = image.preview.icon_id
+                if icon_id:
+                    layout.template_icon(icon_value=icon_id, scale=8.0)
+                else:
+                    image.preview_ensure()
+                    box = layout.box()
+                    box.scale_y = 8.0
+                    box.label(text="")
+            else:
+                image.preview_ensure()
+                box = layout.box()
+                box.scale_y = 8.0
+                box.label(text="")
+
+            # Material settings
+            tex = get_texture_node_from_material(mat)
+            bsdf = get_principled_bsdf_from_material(mat) if mat else None
+
+            layout.separator()
+
+            row = layout.row(align=True)
+            if tex:
+                row.operator(
+                    "leveldesign.set_interpolation_closest",
+                    text="Closest",
+                    depress=(tex.interpolation == 'Closest'),
+                )
+                row.operator(
+                    "leveldesign.set_interpolation_linear",
+                    text="Linear",
+                    depress=(tex.interpolation == 'Linear'),
+                )
+            else:
+                row.enabled = False
+                row.label(text="Closest / Linear")
+
+            layout.separator()
+
+            # Texture alpha checkbox
+            row = layout.row()
+            if mat:
+                alpha_connected = is_texture_alpha_connected(mat)
+                row.operator(
+                    "leveldesign.toggle_texture_alpha",
+                    text="Texture as Alpha",
+                    icon=(
+                        'CHECKBOX_HLT' if alpha_connected else 'CHECKBOX_DEHLT'
+                    ),
+                    depress=alpha_connected,
+                )
+            else:
+                row.enabled = False
+                row.label(text="Texture as Alpha: No material")
+
+            # Vertex colors checkbox
+            row = layout.row()
+            if mat:
+                vc_enabled = is_vertex_colors_enabled(mat)
+                row.operator(
+                    "leveldesign.toggle_vertex_colors",
+                    text="Vertex Colors",
+                    icon=(
+                        'CHECKBOX_HLT' if vc_enabled else 'CHECKBOX_DEHLT'
+                    ),
+                    depress=vc_enabled,
+                )
+            else:
+                row.enabled = False
+                row.label(text="Vertex Colors: No material")
+
+            # Roughness slider
+            row = layout.row()
+            if bsdf:
+                row.prop(
+                    bsdf.inputs["Roughness"], "default_value", text="Roughness"
+                )
+            else:
+                row.enabled = False
+                row.label(text="Roughness: No material")
+
+            # Metallic slider
+            row = layout.row()
+            if bsdf:
+                row.prop(
+                    bsdf.inputs["Metallic"], "default_value", text="Metallic"
+                )
+            else:
+                row.enabled = False
+                row.label(text="Metallic: No material")
+
+            # Experimental settings (collapsible)
+            layout.separator()
+            props = context.scene.level_design_props
+            row = layout.row()
+            row.prop(
+                props, "show_experimental_settings",
+                icon='DISCLOSURE_TRI_DOWN' if props.show_experimental_settings else 'DISCLOSURE_TRI_RIGHT',
+                emboss=False,
+            )
+            if props.show_experimental_settings:
+                box = layout.box()
+                col = box.column(align=True)
+                col.scale_y = 0.7
+                col.label(text="These settings may change in future")
+                col.label(text="versions of Anvil as they are not")
+                col.label(text="widely supported on game engine import.")
+                box.separator()
+
+                if bsdf:
+                    box.prop(bsdf.inputs["Emission Strength"], "default_value", text="Emission Strength")
+                    row = box.row(align=True)
+                    row.label(text="Emission Color")
+                    row.prop(bsdf.inputs["Emission Color"], "default_value", text="")
+                    box.prop(bsdf.inputs["Specular IOR Level"], "default_value", text="Specular")
+                else:
+                    col = box.column()
+                    col.enabled = False
+                    col.label(text="Emission Strength: No material")
+                    col.label(text="Emission Color: No material")
+                    col.label(text="Specular: No material")
+
+            # Fix alpha bleed button
+            layout.separator()
+            layout.operator(
+                "leveldesign.fix_alpha_bleed", icon='IMAGE_RGB_ALPHA'
+            )
+        else:
+            if image is not None:
+                _draw_image_collection_header(layout, image, False)
+                preview_layout = layout.column()
+                preview_layout.enabled = False
+                if image.preview:
+                    icon_id = image.preview.icon_id
+                    if icon_id:
+                        preview_layout.template_icon(icon_value=icon_id, scale=8.0)
+                    else:
+                        image.preview_ensure()
+                        box = preview_layout.box()
+                        box.scale_y = 8.0
+                        box.label(text="")
+                else:
+                    image.preview_ensure()
+                    box = preview_layout.box()
+                    box.scale_y = 8.0
+                    box.label(text="")
+            else:
+                layout.label(text="No texture selected")
+                box = layout.box()
+                box.scale_y = 8.0
+                box.label(text="")
+
+
+class LEVELDESIGN_PT_texture_settings_panel(Panel):
+    """Texture Settings (Pixels per Meter)"""
+
+    bl_label = "Texture Settings"
+    bl_idname = "LEVELDESIGN_PT_texture_settings_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Settings'
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.level_design_props
+
+        row = layout.row(align=True)
+
+        # halve button
+        sub = row.row(align=True)
+        sub.scale_x = 0.4
+        sub.operator("leveldesign.halve_pixels", text="/2")
+
+        # main property
+        row.prop(props, "pixels_per_meter")
+
+        # double button
+        sub = row.row(align=True)
+        sub.scale_x = 0.4
+        sub.operator("leveldesign.double_pixels", text="x2")
+
+
+
+class LEVELDESIGN_PT_default_material_settings_panel(Panel):
+    """Default Material Settings"""
+
+    bl_label = "Default Material Settings"
+    bl_idname = "LEVELDESIGN_PT_default_material_settings_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Settings'
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.level_design_props
+
+        layout.prop(props, "default_material_name_pattern")
+        layout.separator()
+
+        # Interpolation toggle
+        row = layout.row(align=True)
+        row.operator(
+            "leveldesign.set_default_interpolation",
+            text="Closest",
+            depress=(props.default_interpolation == 'Closest'),
+        ).interpolation = 'Closest'
+        row.operator(
+            "leveldesign.set_default_interpolation",
+            text="Linear",
+            depress=(props.default_interpolation == 'Linear'),
+        ).interpolation = 'Linear'
+
+        # Texture as alpha
+        row = layout.row()
+        row.prop(
+            props, "default_texture_as_alpha",
+            text="Texture as Alpha",
+            icon='CHECKBOX_HLT' if props.default_texture_as_alpha else 'CHECKBOX_DEHLT',
+        )
+
+        # Vertex colors
+        row = layout.row()
+        row.prop(
+            props, "default_vertex_colors",
+            text="Vertex Colors",
+            icon='CHECKBOX_HLT' if props.default_vertex_colors else 'CHECKBOX_DEHLT',
+        )
+
+        # Roughness
+        layout.prop(props, "default_roughness")
+
+        # Metallic
+        layout.prop(props, "default_metallic")
+
+        # Experimental settings (collapsible)
+        layout.separator()
+        row = layout.row()
+        row.prop(
+            props, "show_default_experimental_settings",
+            icon='DISCLOSURE_TRI_DOWN' if props.show_default_experimental_settings else 'DISCLOSURE_TRI_RIGHT',
+            emboss=False,
+        )
+        if props.show_default_experimental_settings:
+            box = layout.box()
+            col = box.column(align=True)
+            col.scale_y = 0.7
+            col.label(text="These settings may change in future")
+            col.label(text="versions of Anvil as they are not")
+            col.label(text="widely supported on game engine import.")
+            box.separator()
+
+            box.prop(props, "default_emission_strength")
+            row = box.row(align=True)
+            row.label(text="Emission Color")
+            row.prop(props, "default_emission_color", text="")
+            box.prop(props, "default_specular")
+
+
+class LEVELDESIGN_PT_export_panel(Panel):
+    """Export Panel"""
+
+    bl_label = "Export"
+    bl_idname = "LEVELDESIGN_PT_export_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Export'
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.level_design_props
+
+        has_last_export = props.last_export_filepath != ""
+
+        col = layout.column()
+        col.enabled = has_last_export
+        col.operator("leveldesign.export_gltf_quick", icon='EXPORT')
+
+        if has_last_export:
+            import os
+
+            filename = os.path.basename(props.last_export_filepath)
+            layout.label(text=f"File: {filename}", icon='FILE')
+        else:
+            layout.label(text="No previous export", icon='INFO')
+            layout.label(text="Use File > Export > glTF 2.0 first")
+
+
+class LEVELDESIGN_OT_toggle_debug_logging(Operator):
+    """Toggle debug logging to the console"""
+
+    bl_idname = "leveldesign.toggle_debug_logging"
+    bl_label = "Toggle Debug Logging"
+
+    def execute(self, context):
+        props = context.scene.level_design_props
+        props.debug_logging = not props.debug_logging
+        state = "enabled" if props.debug_logging else "disabled"
+        print(f"Anvil Level Design: Debug logging {state}", flush=True)
+        return {'FINISHED'}
+
+
+class LEVELDESIGN_OT_toggle_performance_logging(Operator):
+    """Toggle grouped performance reports in the console"""
+
+    bl_idname = "leveldesign.toggle_performance_logging"
+    bl_label = "Toggle Performance Logging"
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def execute(self, context):
+        from ..core.logging import reset_performance_mode_tracking
+
+        props = context.scene.level_design_props
+        props.performance_logging = not props.performance_logging
+        reset_performance_mode_tracking(context.mode)
+        state = "enabled" if props.performance_logging else "disabled"
+        print(f"Anvil Level Design: Performance logging {state}", flush=True)
+        return {'FINISHED'}
+
+
+class LEVELDESIGN_PT_debug_panel(Panel):
+    """Debug options"""
+
+    bl_label = "Debug"
+    bl_idname = "LEVELDESIGN_PT_debug_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'Anvil Settings'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return is_level_design_workspace()
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator(
+            "leveldesign.toggle_debug_logging",
+            text="Debug Logging",
+            depress=context.scene.level_design_props.debug_logging,
+            icon='CONSOLE',
+        )
+        layout.operator(
+            "leveldesign.toggle_performance_logging",
+            text="Performance Logging",
+            depress=context.scene.level_design_props.performance_logging,
+            icon='TIME',
+        )
+
+        in_object_mode = context.mode == 'OBJECT'
+        row = layout.row()
+        row.enabled = in_object_mode
+        row.operator("leveldesign.cleanup_unused_materials", icon='BRUSH_DATA')
+        if not in_object_mode:
+            layout.label(text="(Requires Object Mode)", icon='INFO')
+
+        layout.separator()
+
+        from ..operators.overlap_check import is_overlap_check_active, get_overlap_count
+        active = is_overlap_check_active()
+        count = get_overlap_count()
+        if active and count > 0:
+            text = f"Overlapping Faces ({count})"
+        else:
+            text = "Overlapping Faces"
+        layout.operator(
+            "leveldesign.toggle_overlap_check",
+            text=text,
+            depress=active,
+            icon='ERROR',
+        )
+
+
+# Split into category groups so panels/__init__.py can interleave the
+# Anvil Prefabs registration between Materials and Settings. Sidebar tab
+# order in Blender is locked in by the order each category is first
+# encountered during registration.
+materials_classes = (
+    LEVELDESIGN_PT_status_panel,
+    LEVELDESIGN_OT_set_active_render_uv,
+    LEVELDESIGN_OT_toggle_uv_lock,
+    LEVELDESIGN_OT_toggle_auto_hotspot,
+    LEVELDESIGN_OT_toggle_combine_faces,
+    LEVELDESIGN_OT_toggle_fixed_hotspot,
+    LEVELDESIGN_PT_uv_lock_panel,
+    LEVELDESIGN_PT_uv_settings_panel,
+    LEVELDESIGN_PT_hotspotting_panel,
+    LEVELDESIGN_PT_uv_shortcuts_panel,
+    LEVELDESIGN_PT_texture_preview_panel,
+)
+
+settings_and_export_classes = (
+    LEVELDESIGN_PT_texture_settings_panel,
+    LEVELDESIGN_PT_default_material_settings_panel,
+    LEVELDESIGN_PT_export_panel,
+    LEVELDESIGN_OT_toggle_debug_logging,
+    LEVELDESIGN_OT_toggle_performance_logging,
+    LEVELDESIGN_PT_debug_panel,
+)
+
+classes = materials_classes + settings_and_export_classes
+
+
+def register_materials():
+    for cls in materials_classes:
+        bpy.utils.register_class(cls)
+
+
+def register_settings_and_export():
+    for cls in settings_and_export_classes:
+        bpy.utils.register_class(cls)
+
+
+def register():
+    register_materials()
+    register_settings_and_export()
+
+
+def unregister():
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)

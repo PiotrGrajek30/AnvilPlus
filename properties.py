@@ -1,0 +1,996 @@
+import bpy
+import bmesh
+import math
+import time
+from bpy.props import BoolProperty, FloatProperty, FloatVectorProperty, IntProperty, PointerProperty, StringProperty, EnumProperty, CollectionProperty
+
+# Flag to prevent recursive updates
+_updating_from_selection = False
+_updating_from_selection_since = 0.0
+# Flag to prevent linked scale from causing infinite recursion
+_updating_linked_scale = False
+# Flags to prevent linked prefab random scale rows from recursing
+_updating_prefab_random_scale_min = False
+_updating_prefab_random_scale_max = False
+# Flag to prevent offset normalization from causing infinite recursion
+_normalizing_offset = False
+# Flag to prevent rotation normalization from causing infinite recursion
+_normalizing_rotation = False
+# Undo push threshold (seconds) between property edits
+_UNDO_PUSH_THRESHOLD = 0.5
+# Last update timestamps for undo batching
+_last_scale_update_time = 0.0
+_last_rotation_update_time = 0.0
+_last_offset_update_time = 0.0
+# Scale tracking
+_last_scale_u = 1.0
+_last_scale_v = 1.0
+def _update_anvil_material_shader(material):
+    """Rebuild the canonical shader so all edited Anvil material properties apply."""
+    if material is None:
+        return
+    if not getattr(material, "anvil_material_schema_version", 0):
+        return
+    image = getattr(material, "anvil_primary_image", None)
+    if image is None:
+        return
+    try:
+        import importlib
+        ms = importlib.import_module("anvil-level-design-main.core.material_shader")
+        nodes = material.node_tree.nodes if getattr(material, "node_tree", None) else []
+        texture_node = None
+        bsdf_node = None
+        for node in nodes:
+            if node.type == 'TEX_IMAGE' and getattr(node, "image", None) == image:
+                texture_node = node
+            elif node.type == 'BSDF_PRINCIPLED':
+                bsdf_node = node
+        interpolation = getattr(material, "anvil_interpolation", "Linear") or "Linear"
+        vertex_colors = any(n.type == 'ATTRIBUTE' for n in nodes) or any(
+            "VertexColor" in getattr(n, "bl_idname", "") for n in nodes
+        )
+        def _bsdf_input(name):
+            if bsdf_node is None:
+                return None
+            inp = bsdf_node.inputs.get(name)
+            return getattr(inp, "default_value", None) if inp is not None else None
+        emission_strength = _bsdf_input("Emission Strength")
+        if emission_strength is None:
+            emission_strength = 0.0
+        emission_color = _bsdf_input("Emission Color")
+        if emission_color is None:
+            emission_color = (1.0, 1.0, 1.0, 1.0)
+        specular = _bsdf_input("Specular IOR Level")
+        if specular is None:
+            specular = 0.5
+        settings = {
+            "uv_scale": float(getattr(material, "anvil_uv_scale", 1.0)),
+            "base_color": tuple(getattr(material, "anvil_base_color", (1.0, 1.0, 1.0, 1.0))),
+            "interpolation": interpolation,
+            "texture_as_alpha": getattr(material, "blend_method", "OPAQUE") == 'CLIP',
+            "vertex_colors": vertex_colors,
+            "roughness": getattr(material, "anvil_roughness", 0.5),
+            "metallic": getattr(material, "anvil_metallic", 0.0),
+            "emission_strength": emission_strength,
+            "emission_color": tuple(emission_color),
+            "specular": specular,
+        }
+        ms.build_canonical_material_shader(material, image, settings)
+    except Exception:
+        pass
+
+
+def set_updating_from_selection(value):
+    global _updating_from_selection, _updating_from_selection_since
+    _updating_from_selection = value
+    if value:
+        _updating_from_selection_since = time.time()
+    else:
+        _updating_from_selection_since = 0.0
+
+
+def get_updating_from_selection():
+    global _updating_from_selection, _updating_from_selection_since
+    if _updating_from_selection and _updating_from_selection_since and (time.time() - _updating_from_selection_since) > 1.0:
+        _updating_from_selection = False
+        _updating_from_selection_since = 0.0
+    return _updating_from_selection
+
+
+def sync_scale_tracking(context):
+    """Update scale tracking to match current property values. Call after selection changes."""
+    global _last_scale_u, _last_scale_v
+    props = context.scene.level_design_props
+    _last_scale_u = props.texture_scale_u
+    _last_scale_v = props.texture_scale_v
+
+
+def update_uv_map_lock(self, context):
+    """Called when a per-UV-map lock is toggled"""
+    from .handlers import cache_face_data
+    cache_face_data(context)
+
+
+class AnvilUVMapSettings(bpy.types.PropertyGroup):
+    """Per-UV-map settings (lock state)"""
+    locked: BoolProperty(
+        name="Locked",
+        description="Lock this UV map to geometry (sticker mode)",
+        default=False,
+        update=update_uv_map_lock,
+    )
+
+
+class AnvilPrefabObjectName(bpy.types.PropertyGroup):
+    """A single prefab asset discovered inside a prefab library .blend file"""
+    name: StringProperty(name="Name")
+    asset_type: StringProperty(name="Asset Type")
+
+
+class AnvilPrefabLibrary(bpy.types.PropertyGroup):
+    """A .blend file referenced as a prefab library"""
+    filepath: StringProperty(
+        name="Filepath",
+        description="Absolute path to the .blend file",
+        subtype='FILE_PATH',
+    )
+    objects: CollectionProperty(type=AnvilPrefabObjectName)
+
+
+def apply_scale_to_selected_faces(context):
+    """Apply scale from panel to selected faces, preserving each face's rotation and offset."""
+    if get_updating_from_selection() or context.mode != 'EDIT_MESH':
+        return
+
+    obj = context.object
+    if not obj or obj.type != 'MESH':
+        return
+
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+
+    from .core.uv_layers import get_render_active_uv_layer
+    uv_layer = get_render_active_uv_layer(bm, me)
+    if uv_layer is None:
+        return
+
+    props = context.scene.level_design_props
+    new_scale_u = props.texture_scale_u
+    new_scale_v = props.texture_scale_v
+    ppm = props.pixels_per_meter
+
+    selected_faces = [f for f in bm.faces if f.select]
+    if not selected_faces:
+        return
+
+    from .handlers import cache_single_face
+    from .core.uv_projection import derive_transform_from_uvs, apply_uv_to_face
+    from .core.hotspot_queries import face_has_hotspot_material
+
+    for face in selected_faces:
+        # Skip faces with hotspottable materials
+        if face_has_hotspot_material(face, me):
+            continue
+
+        # Get current transform from this face's UVs
+        current = derive_transform_from_uvs(face, uv_layer, ppm, me)
+        if current is None:
+            continue
+
+        mat = me.materials[face.material_index] if face.material_index < len(me.materials) else None
+        # Apply new scale, but keep this face's rotation and offset
+        apply_uv_to_face(face, uv_layer, new_scale_u, new_scale_v,
+                         current['rotation'], current['offset_x'], current['offset_y'],
+                         mat, ppm, me)
+        cache_single_face(face, bm, ppm, me)
+
+
+def apply_rotation_to_selected_faces(context):
+    """Apply rotation from panel to selected faces, preserving each face's scale and offset."""
+    if get_updating_from_selection() or context.mode != 'EDIT_MESH':
+        return
+
+    obj = context.object
+    if not obj or obj.type != 'MESH':
+        return
+
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+
+    from .core.uv_layers import get_render_active_uv_layer
+    uv_layer = get_render_active_uv_layer(bm, me)
+    if uv_layer is None:
+        return
+
+    props = context.scene.level_design_props
+    new_rotation = props.texture_rotation
+    ppm = props.pixels_per_meter
+
+    selected_faces = [f for f in bm.faces if f.select]
+    if not selected_faces:
+        return
+
+    from .handlers import cache_single_face
+    from .core.uv_projection import derive_transform_from_uvs, apply_uv_to_face
+    from .core.hotspot_queries import face_has_hotspot_material
+
+    for face in selected_faces:
+        # Skip faces with hotspottable materials
+        if face_has_hotspot_material(face, me):
+            continue
+
+        # Get current transform from this face's UVs
+        current = derive_transform_from_uvs(face, uv_layer, ppm, me)
+        if current is None:
+            continue
+
+        mat = me.materials[face.material_index] if face.material_index < len(me.materials) else None
+        # Apply new rotation, but keep this face's scale and offset
+        apply_uv_to_face(face, uv_layer, current['scale_u'], current['scale_v'],
+                         new_rotation, current['offset_x'], current['offset_y'],
+                         mat, ppm, me)
+        cache_single_face(face, bm, ppm, me)
+
+
+def apply_offset_to_selected_faces(context):
+    """Apply offset from panel to selected faces, preserving each face's scale and rotation."""
+    if get_updating_from_selection() or context.mode != 'EDIT_MESH':
+        return
+
+    obj = context.object
+    if not obj or obj.type != 'MESH':
+        return
+
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+
+    from .core.uv_layers import get_render_active_uv_layer
+    uv_layer = get_render_active_uv_layer(bm, me)
+    if uv_layer is None:
+        return
+
+    props = context.scene.level_design_props
+    new_offset_x = props.texture_offset_x
+    new_offset_y = props.texture_offset_y
+    ppm = props.pixels_per_meter
+
+    selected_faces = [f for f in bm.faces if f.select]
+    if not selected_faces:
+        return
+
+    from .handlers import cache_single_face
+    from .core.uv_projection import derive_transform_from_uvs, apply_uv_to_face
+    from .core.hotspot_queries import face_has_hotspot_material
+
+    for face in selected_faces:
+        # Skip faces with hotspottable materials
+        if face_has_hotspot_material(face, me):
+            continue
+
+        # Get current transform from this face's UVs
+        current = derive_transform_from_uvs(face, uv_layer, ppm, me)
+        if current is None:
+            continue
+
+        mat = me.materials[face.material_index] if face.material_index < len(me.materials) else None
+        # Apply new offset, but keep this face's scale and rotation
+        apply_uv_to_face(face, uv_layer, current['scale_u'], current['scale_v'],
+                         current['rotation'], new_offset_x, new_offset_y,
+                         mat, ppm, me)
+        cache_single_face(face, bm, ppm, me)
+
+
+def update_texture_scale(self, context):
+    """Called when scale_u or scale_v changes"""
+    global _updating_linked_scale, _last_scale_u, _last_scale_v, _last_scale_update_time
+
+    if _updating_linked_scale or get_updating_from_selection():
+        return
+
+    from .handlers import mark_multi_face_set_scale
+    mark_multi_face_set_scale()
+
+    # Push undo if this is a new edit session (not mid-drag)
+    current_time = time.time()
+    if current_time - _last_scale_update_time > _UNDO_PUSH_THRESHOLD:
+        try:
+            bpy.ops.ed.undo_push(message="Change Texture Scale")
+        except Exception:
+            pass
+    _last_scale_update_time = current_time
+
+    props = context.scene.level_design_props
+
+    # Handle linked scale - detect which value changed and sync the other
+    if props.texture_scale_linked and props.texture_scale_u != props.texture_scale_v:
+        _updating_linked_scale = True
+        try:
+            u_changed = props.texture_scale_u != _last_scale_u
+            v_changed = props.texture_scale_v != _last_scale_v
+
+            if u_changed:
+                props.texture_scale_v = props.texture_scale_u
+            elif v_changed:
+                props.texture_scale_u = props.texture_scale_v
+        finally:
+            _updating_linked_scale = False
+
+    # Update tracking
+    _last_scale_u = props.texture_scale_u
+    _last_scale_v = props.texture_scale_v
+
+    apply_scale_to_selected_faces(context)
+
+
+def update_texture_rotation(self, context):
+    """Called when rotation changes"""
+    global _normalizing_rotation, _last_rotation_update_time
+
+    if _normalizing_rotation or get_updating_from_selection():
+        return
+
+    from .handlers import mark_multi_face_set_rotation
+    mark_multi_face_set_rotation()
+
+    # Push undo if this is a new edit session (not mid-drag)
+    current_time = time.time()
+    if current_time - _last_rotation_update_time > _UNDO_PUSH_THRESHOLD:
+        try:
+            bpy.ops.ed.undo_push(message="Change Texture Rotation")
+        except Exception:
+            pass
+    _last_rotation_update_time = current_time
+
+    props = context.scene.level_design_props
+
+    # Normalize rotation to 0-360 range
+    if props.texture_rotation < 0 or props.texture_rotation >= 360:
+        _normalizing_rotation = True
+        try:
+            props.texture_rotation = props.texture_rotation % 360.0
+        finally:
+            _normalizing_rotation = False
+
+    apply_rotation_to_selected_faces(context)
+
+
+def update_texture_offset(self, context):
+    """Called when offset_x or offset_y changes"""
+    global _normalizing_offset, _last_offset_update_time
+
+    if _normalizing_offset or get_updating_from_selection():
+        return
+
+    from .handlers import mark_multi_face_set_offset
+    mark_multi_face_set_offset()
+
+    # Push undo if this is a new edit session (not mid-drag)
+    current_time = time.time()
+    if current_time - _last_offset_update_time > _UNDO_PUSH_THRESHOLD:
+        try:
+            bpy.ops.ed.undo_push(message="Change Texture Offset")
+        except Exception:
+            pass
+    _last_offset_update_time = current_time
+
+    props = context.scene.level_design_props
+
+    # Normalize offset values if they're outside 0-1 range
+    needs_normalize_x = props.texture_offset_x < 0 or props.texture_offset_x >= 1
+    needs_normalize_y = props.texture_offset_y < 0 or props.texture_offset_y >= 1
+    if needs_normalize_x or needs_normalize_y:
+        _normalizing_offset = True
+        try:
+            if needs_normalize_x:
+                props.texture_offset_x = props.texture_offset_x % 1.0
+            if needs_normalize_y:
+                props.texture_offset_y = props.texture_offset_y % 1.0
+        finally:
+            _normalizing_offset = False
+
+    apply_offset_to_selected_faces(context)
+
+
+def update_box_project_scale(self, context):
+    """Run Box Project when its scale changes."""
+    if get_updating_from_selection():
+        return
+
+    # Only run in edit mode or object mode (operator handles mode switching)
+    if context.mode not in {'EDIT_MESH', 'OBJECT'}:
+        return
+
+    bpy.ops.leveldesign.box_project()
+
+
+def _sync_prefab_random_scale_vector_to_x(props, attr_name):
+    value = getattr(props, attr_name)
+    x = value[0]
+    if value[1] == x and value[2] == x:
+        return
+    setattr(props, attr_name, (x, x, x))
+
+
+def _sync_prefab_random_scale_min_from_x(props):
+    """Keep random minimum scale axes linked when enabled."""
+    global _updating_prefab_random_scale_min
+
+    if _updating_prefab_random_scale_min or not props.prefab_random_scale_min_linked:
+        return
+
+    _updating_prefab_random_scale_min = True
+    try:
+        _sync_prefab_random_scale_vector_to_x(props, "prefab_random_scale_min")
+    finally:
+        _updating_prefab_random_scale_min = False
+
+
+def _sync_prefab_random_scale_max_from_x(props):
+    """Keep random maximum scale axes linked when enabled."""
+    global _updating_prefab_random_scale_max
+
+    if _updating_prefab_random_scale_max or not props.prefab_random_scale_max_linked:
+        return
+
+    _updating_prefab_random_scale_max = True
+    try:
+        _sync_prefab_random_scale_vector_to_x(props, "prefab_random_scale_max")
+    finally:
+        _updating_prefab_random_scale_max = False
+
+
+def update_prefab_random_scale_min(self, context):
+    """Keep random minimum scale axes linked when enabled."""
+    _sync_prefab_random_scale_min_from_x(self)
+
+
+def update_prefab_random_scale_max(self, context):
+    """Keep random maximum scale axes linked when enabled."""
+    _sync_prefab_random_scale_max_from_x(self)
+
+
+def update_prefab_random_scale_min_linked(self, context):
+    """Sync random minimum scale axes when the link is enabled."""
+    if self.prefab_random_scale_min_linked:
+        _sync_prefab_random_scale_min_from_x(self)
+
+
+def update_prefab_random_scale_max_linked(self, context):
+    """Sync random maximum scale axes when the link is enabled."""
+    if self.prefab_random_scale_max_linked:
+        _sync_prefab_random_scale_max_from_x(self)
+
+
+class LevelDesignProperties(bpy.types.PropertyGroup):
+    """Combined properties for Level Design Tools"""
+
+    # Dummy prop so the UV Lock button renders even with no object selected
+    uv_lock_placeholder: BoolProperty(name="UV Lock", default=False)
+
+    debug_logging: BoolProperty(
+        name="Debug Logging",
+        description="Enable debug logging to the console",
+        default=False,
+    )
+
+    performance_logging: BoolProperty(
+        name="Performance Logging",
+        description="Print grouped performance reports for important operations",
+        default=False,
+    )
+
+    # === UV Tools Properties ===
+    pixels_per_meter: IntProperty(
+        name="Pixels per Meter",
+        description="Number of texture pixels that represent 1 meter at scale 1",
+        default=128,
+        min=1,
+        max=4096,
+    )
+
+    texture_scale_u: FloatProperty(
+        name="Scale U",
+        description="Horizontal texture scale. Negative values mirror the texture along U",
+        default=1.0,
+        min=-100.0,
+        max=100.0,
+        update=update_texture_scale,
+    )
+
+    texture_scale_v: FloatProperty(
+        name="Scale V",
+        description="Vertical texture scale. Negative values mirror the texture along V",
+        default=1.0,
+        min=-100.0,
+        max=100.0,
+        update=update_texture_scale,
+    )
+
+    texture_scale_linked: BoolProperty(
+        name="Link Scale",
+        description="Link U and V scale values together",
+        default=True,
+    )
+
+    texture_rotation: FloatProperty(
+        name="Rotation",
+        description="Texture rotation in degrees",
+        default=0.0,
+        update=update_texture_rotation,
+    )
+
+    texture_offset_x: FloatProperty(
+        name="Offset X",
+        description="Horizontal texture offset in texture tiles",
+        default=0.0,
+        update=update_texture_offset,
+    )
+
+    texture_offset_y: FloatProperty(
+        name="Offset Y",
+        description="Vertical texture offset in texture tiles",
+        default=0.0,
+        update=update_texture_offset,
+    )
+
+    edge_index: IntProperty(
+        name="Edge Index",
+        description="Current edge index for snapping",
+        default=0,
+        min=0,
+    )
+
+    box_project_scale: FloatProperty(
+        name="Scale",
+        description="Scale applied by Box Project",
+        default=1.0,
+        min=0.001,
+        max=100.0,
+        update=update_box_project_scale,
+    )
+
+    # auto_hotspot moved to per-object properties
+    # (see register() below)
+
+    # Face orientation overlay state saved before forcing it on in vertex paint/sculpt.
+    # -1 = not saved, 0 = was off, 1 = was on
+    saved_face_orientation: IntProperty(
+        name="Saved Face Orientation",
+        default=-1,
+    )
+
+    # === Default Material Settings ===
+    default_interpolation: EnumProperty(
+        name="Default Interpolation",
+        description="Interpolation mode for new materials",
+        items=[
+            ('Closest', "Closest", "No interpolation (pixelated)"),
+            ('Linear', "Linear", "Linear interpolation (smooth)"),
+        ],
+        default='Linear',
+    )
+
+    default_texture_as_alpha: BoolProperty(
+        name="Texture as Alpha",
+        description="Connect texture alpha to material alpha for new materials",
+        default=False,
+    )
+
+    default_auto_alpha: BoolProperty(
+        name="Auto Alpha",
+        description="Automatically detect image transparency and enable alpha for new materials",
+        default=True,
+    )
+
+    default_vertex_colors: BoolProperty(
+        name="Vertex Colors",
+        description="Multiply texture by vertex colors for new materials",
+        default=False,
+    )
+
+    default_roughness: FloatProperty(
+        name="Roughness",
+        description="Roughness value for new materials",
+        default=0.5,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+    )
+
+    default_metallic: FloatProperty(
+        name="Metallic",
+        description="Metallic value for new materials",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+    )
+
+    # === Default Experimental Material Settings ===
+    default_emission_strength: FloatProperty(
+        name="Emission Strength",
+        description="Emission strength for new materials",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+    )
+
+    default_emission_color: FloatVectorProperty(
+        name="Emission Color",
+        description="Emission color for new materials",
+        subtype='COLOR',
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),
+    )
+
+    default_specular: FloatProperty(
+        name="Specular",
+        description="Specular (IOR Level) value for new materials",
+        default=0.5,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+    )
+
+    default_material_name_pattern: StringProperty(
+        name="Material Name Pattern",
+        description=(
+            "Naming pattern for new image materials\n"
+            "{relativePath}: Folder path relative to the .blend file\n"
+            "{encodedRelativePath}: Encoded relative folder path "
+            "(RP__...__ENDRP)\n"
+            "{filename}: Filename without its extension\n"
+            "{extension}: File extension including the dot"
+        ),
+        default="{filename}{extension}",
+    )
+
+    # === UI Collapse State ===
+    show_experimental_settings: BoolProperty(
+        name="Experimental Settings",
+        description="Show experimental material settings",
+        default=False,
+    )
+
+    show_default_experimental_settings: BoolProperty(
+        name="Experimental Settings",
+        description="Show default experimental material settings",
+        default=False,
+    )
+
+    # === Export Properties ===
+    last_export_filepath: StringProperty(
+        name="Last Export Path",
+        description="Path of the last glTF export",
+        default="",
+        subtype='FILE_PATH',
+    )
+
+    # === glTF Exporter Extension (Anvil panel) ===
+    gltf_anvil_enabled: BoolProperty(
+        name="Enable Anvil Export",
+        description="Enable Anvil preprocessing when exporting via the standard glTF exporter",
+        default=True,
+    )
+
+    gltf_anvil_scale: FloatProperty(
+        name="Scale",
+        description="Scale factor to apply to exported geometry",
+        default=1.0,
+        min=0.001,
+        max=1000.0,
+        soft_min=0.01,
+        soft_max=100.0,
+    )
+
+    gltf_anvil_apply_modifiers: BoolProperty(
+        name="Apply Modifiers (Anvil)",
+        description="Apply modifiers before exporting (preserves glTF extras, unlike the built-in option)",
+        default=True,
+    )
+
+    gltf_anvil_separate_loose: BoolProperty(
+        name="Separate Loose Meshes",
+        description="Separate disconnected mesh islands into individual objects for per-object culling",
+        default=True,
+    )
+
+    gltf_anvil_always_combine_materials: BoolProperty(
+        name="Always Combine Materials",
+        description="Combine same-named materials during export, preferring local scene material settings when available",
+        default=True,
+    )
+
+    gltf_anvil_debug: BoolProperty(
+        name="Debug (Keep Export Scene)",
+        description="Keep the temporary export scene for inspection instead of deleting it",
+        default=False,
+    )
+
+    anvil_grid_scale: FloatProperty(
+        name="Anvil Grid Scale",
+        description="Logical grid scale used by Anvil",
+        min=0.0001,
+        max=100000.0,
+    )
+
+    # === Grid Overlay ===
+    show_grid_overlay: BoolProperty(
+        name="Show Grid Overlay",
+        description="Display a grid overlay on all visible geometry",
+        default=False,
+    )
+
+    # === Fixed Hotspot Overlay ===
+    show_fixed_hotspot_overlay: BoolProperty(
+        name="Show Fixed Hotspot Overlay",
+        description="Display a white overlay on faces marked as fixed hotspot",
+        default=False,
+    )
+
+    # === Prefab Placement Properties ===
+    prefab_inherit_normal: BoolProperty(
+        name="Inherit Normal",
+        description="Align prefab placement to the face normal by default",
+        default=True,
+    )
+
+    prefab_random_scale_enabled: BoolProperty(
+        name="Random Size",
+        description="Randomize prefab placement scale per axis",
+        default=False,
+    )
+
+    prefab_random_scale_min: FloatVectorProperty(
+        name="Min Scale",
+        description="Minimum prefab placement scale on X, Y, and Z",
+        size=3,
+        default=(1.0, 1.0, 1.0),
+        min=0.001,
+        max=1000.0,
+        update=update_prefab_random_scale_min,
+    )
+
+    prefab_random_scale_min_linked: BoolProperty(
+        name="Link Min Scale",
+        description="Keep random minimum scale Y and Z matched to X",
+        default=True,
+        update=update_prefab_random_scale_min_linked,
+    )
+
+    prefab_random_scale_max: FloatVectorProperty(
+        name="Max Scale",
+        description="Maximum prefab placement scale on X, Y, and Z",
+        size=3,
+        default=(1.0, 1.0, 1.0),
+        min=0.001,
+        max=1000.0,
+        update=update_prefab_random_scale_max,
+    )
+
+    prefab_random_scale_max_linked: BoolProperty(
+        name="Link Max Scale",
+        description="Keep random maximum scale Y and Z matched to X",
+        default=True,
+        update=update_prefab_random_scale_max_linked,
+    )
+
+    prefab_random_rotation_enabled: BoolProperty(
+        name="Random Rotation",
+        description="Randomize prefab placement Euler rotation per axis",
+        default=False,
+    )
+
+    prefab_random_rotation_min: FloatVectorProperty(
+        name="Min Rotation",
+        description="Minimum prefab placement Euler rotation on X, Y, and Z",
+        size=3,
+        subtype='EULER',
+        default=(0.0, 0.0, 0.0),
+    )
+
+    prefab_random_rotation_max: FloatVectorProperty(
+        name="Max Rotation",
+        description="Maximum prefab placement Euler rotation on X, Y, and Z",
+        size=3,
+        subtype='EULER',
+        default=(0.0, 0.0, 0.0),
+    )
+
+def register():
+    bpy.utils.register_class(AnvilUVMapSettings)
+    bpy.utils.register_class(AnvilPrefabObjectName)
+    bpy.utils.register_class(AnvilPrefabLibrary)
+    bpy.utils.register_class(LevelDesignProperties)
+    bpy.types.Scene.level_design_props = PointerProperty(type=LevelDesignProperties)
+    bpy.types.Scene.anvil_active_material_index = IntProperty(
+        name="Active Material Index",
+        default=0,
+        min=0,
+    )
+    bpy.types.Scene.anvil_material_list_filter = StringProperty(
+        name="Filter Materials",
+        description="Filter the material list by name",
+        default="",
+    )
+    bpy.types.Scene.anvil_material_mapping_prompt_handled = BoolProperty(
+        name="Material Mapping Prompt Handled",
+        description="Whether this existing file has shown Fix Material Mappings",
+        default=False,
+        options={'HIDDEN'},
+    )
+
+    bpy.types.Material.anvil_primary_image = PointerProperty(
+        name="Primary Image",
+        description="Image used to identify this material in Anvil",
+        type=bpy.types.Image,
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_material_schema_version = IntProperty(
+        name="Anvil Material Schema Version",
+        description="Version of this material's Anvil mapping data",
+        default=0,
+        min=0,
+        options={'HIDDEN'},
+    )
+    bpy.types.Material.anvil_uv_scale = FloatProperty(
+        name="UV Scale",
+        description="Default UV scale for this material",
+        default=1.0,
+        min=0.001,
+        soft_max=10.0,
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_interpolation = EnumProperty(
+        name="Filtering",
+        description="Texture filtering mode",
+        items=[
+            ('Closest', "Closest", "No interpolation (pixelated)"),
+            ('Linear', "Linear", "Linear interpolation (smooth)"),
+        ],
+        default='Linear',
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_roughness = FloatProperty(
+        name="Roughness",
+        description="Default roughness for this material",
+        default=0.5,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_metallic = FloatProperty(
+        name="Metallic",
+        description="Default metallic for this material",
+        default=0.0,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_base_color = FloatVectorProperty(
+        name="Base Color",
+        description="Tint color multiplied with the color map",
+        subtype='COLOR',
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(1.0, 1.0, 1.0, 1.0),
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+
+    bpy.types.Material.anvil_roughness_image = PointerProperty(
+        name="Roughness Map",
+        description="Image used as the roughness map",
+        type=bpy.types.Image,
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_normal_image = PointerProperty(
+        name="Normal Map",
+        description="Image used as the normal map",
+        type=bpy.types.Image,
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_displacement_image = PointerProperty(
+        name="Displacement Map",
+        description="Image used as the displacement map",
+        type=bpy.types.Image,
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+    bpy.types.Material.anvil_metallic_image = PointerProperty(
+        name="Metallic Map",
+        description="Image used as the metallic map",
+        type=bpy.types.Image,
+        update=lambda self, context: _update_anvil_material_shader(self),
+    )
+
+    # Prefab libraries (Anvil (Prefabs) panel)
+    bpy.types.Scene.anvil_prefab_libraries = CollectionProperty(type=AnvilPrefabLibrary)
+    bpy.types.Scene.anvil_prefab_active_library_index = IntProperty(
+        name="Active Library Index",
+        default=0,
+    )
+
+    # Per-scene mode toggle: in Library mode the scene-side prefab panels are
+    # hidden and on save existing object assets get viewport previews captured.
+    bpy.types.Scene.anvil_prefab_mode = EnumProperty(
+        name="Prefab Mode",
+        description="Whether this scene is used as a level (Scene) or as a prefab library (Library)",
+        items=[
+            ('SCENE', "Scene", "Normal scene; link prefabs from libraries"),
+            ('LIBRARY', "Library", "Object assets in this scene are prefabs; on save, capture viewport-shaded previews"),
+        ],
+        default='SCENE',
+    )
+
+    # Per-object, per-UV-map settings collection
+    bpy.types.Object.anvil_uv_map_settings = CollectionProperty(type=AnvilUVMapSettings)
+
+    # Per-object allow combined faces property for hotspotting
+    bpy.types.Object.anvil_allow_combined_faces = BoolProperty(
+        name="Combine Faces",
+        description="Allow multi-face islands during hotspot mapping. When disabled, each face is mapped independently",
+        default=True,
+    )
+
+    # Per-object balance between aspect ratio and size matching (0 = pure aspect, 1 = pure size)
+    bpy.types.Object.anvil_hotspot_size_weight = FloatProperty(
+        name="Size Weight",
+        description="Balance between aspect ratio matching (0) and size matching (1)",
+        default=0.1,
+        min=0.0,
+        max=1.0,
+        subtype='FACTOR',
+    )
+
+    # Per-object seam angle threshold for hotspot topology grouping (stored in radians, displayed as degrees)
+    bpy.types.Object.anvil_hotspot_seam_angle = FloatProperty(
+        name="Seam Angle",
+        description="Maximum angle between face normals before adding a seam. Lower values create more groups, higher values combine more faces",
+        default=math.radians(33),
+        min=0.0,
+        max=math.pi,
+        subtype='ANGLE',
+    )
+
+    # Per-object auto hotspot toggle
+    bpy.types.Object.anvil_auto_hotspot = BoolProperty(
+        name="Auto Hotspot",
+        description="Automatically apply hotspot mapping after geometry changes",
+        default=False,
+    )
+
+
+
+def unregister():
+    del bpy.types.Object.anvil_auto_hotspot
+    del bpy.types.Object.anvil_hotspot_seam_angle
+    del bpy.types.Object.anvil_hotspot_size_weight
+    del bpy.types.Object.anvil_allow_combined_faces
+    del bpy.types.Object.anvil_uv_map_settings
+    del bpy.types.Material.anvil_normal_image
+    del bpy.types.Material.anvil_displacement_image
+    del bpy.types.Material.anvil_metallic_image
+    del bpy.types.Material.anvil_base_color
+    del bpy.types.Material.anvil_roughness_image
+    del bpy.types.Material.anvil_metallic
+    del bpy.types.Material.anvil_roughness
+    del bpy.types.Material.anvil_uv_scale
+    del bpy.types.Material.anvil_interpolation
+    del bpy.types.Material.anvil_material_schema_version
+    del bpy.types.Material.anvil_primary_image
+    del bpy.types.Scene.anvil_active_material_index
+    del bpy.types.Scene.anvil_material_list_filter
+    del bpy.types.Scene.anvil_material_mapping_prompt_handled
+    del bpy.types.Scene.anvil_prefab_mode
+    del bpy.types.Scene.anvil_prefab_active_library_index
+    del bpy.types.Scene.anvil_prefab_libraries
+    del bpy.types.Scene.level_design_props
+    bpy.utils.unregister_class(LevelDesignProperties)
+    bpy.utils.unregister_class(AnvilPrefabLibrary)
+    bpy.utils.unregister_class(AnvilPrefabObjectName)
+    bpy.utils.unregister_class(AnvilUVMapSettings)

@@ -1,0 +1,545 @@
+2026-11-08 18:03:54 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png'] active_idx=0
+2026-11-08 18:04:19 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-08 18:04:19 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-08 18:04:19 created material grid
+2026-11-08 18:04:19 shader built; materials now=['ANVIL_Unassigned', 'dev-texture.png', 'grid']
+2026-11-08 18:04:19 active index set to 2
+2026-11-08 18:04:19 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'grid'] active_idx=2
+2026-11-08 18:04:28 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png'] active_idx=2
+2026-11-08 18:04:32 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'grid'] active_idx=2
+2026-11-08 18:04:32 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png'] active_idx=0
+2026-11-08 18:04:44 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png'] active_idx=0
+2026-11-08 18:06:42 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:10:15 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=0
+2026-11-08 18:10:21 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=0
+2026-11-08 18:10:25 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=0
+2026-11-08 18:10:45 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=0
+2026-11-08 18:14:22 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:14:40 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:14:45 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:14:50 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:01 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:03 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:05 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:08 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:11 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:13 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:19 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=1
+2026-11-08 18:15:42 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:19:57 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:20:01 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:20:04 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:20:08 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:20:12 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:20:16 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:20:38 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:27:28 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:27:31 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:27:33 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:29:16 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:29:18 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:29:28 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:29:32 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:29:39 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:29:43 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-08 18:30:07 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:32:57 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:33:02 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:33:06 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 18:33:23 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-08 19:13:41 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=0
+2026-11-08 20:32:25 [panel] draw materials=['ANVIL_Unassigned', 'dev-texture.png', 'texture.png'] active_idx=0
+2026-11-08 20:33:44 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 09:40:56 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 09:46:42 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 09:46:55 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 09:47:16 [panel] draw materials=['ANVIL_Unassigned'] active_idx=0
+2026-11-09 09:48:28 [panel] draw materials=['ANVIL_Unassigned'] active_idx=0
+2026-11-09 10:34:00 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:37:45 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:39:31 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:39:34 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:39:41 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:39:57 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:40:17 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:41:16 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:41:43 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:43:19 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:43:33 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:43:53 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:44:14 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:45:21 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:45:43 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:50:01 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 10:57:16 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 10:57:16 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 10:57:16 created material grid
+2026-11-09 10:57:16 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 10:57:16 active index set to 1
+2026-11-09 10:57:16 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 11:58:54 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 11:59:10 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 11:59:10 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 11:59:10 created material grid
+2026-11-09 11:59:10 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 11:59:10 active index set to 1
+2026-11-09 11:59:10 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:00:03 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-09 12:00:55 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-09 12:01:04 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-09 12:01:07 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-09 12:01:11 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-09 12:01:25 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:01:30 [panel] draw materials=['ANVIL_Unassigned'] active_idx=0
+2026-11-09 12:01:33 [panel] draw materials=[] active_idx=0
+2026-11-09 12:01:45 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 12:01:45 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 12:01:45 created material grid
+2026-11-09 12:01:45 shader built; materials now=['grid']
+2026-11-09 12:01:45 active index set to 0
+2026-11-09 12:01:45 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:17 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:20 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:22 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:27 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:34 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:41 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:45 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:50 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:05:54 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:06:05 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:06:08 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:06:11 [panel] draw materials=['grid'] active_idx=0
+2026-11-09 12:07:00 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:07:40 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:09:35 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:09:51 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:10:04 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 12:10:04 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 12:10:04 created material grid
+2026-11-09 12:10:04 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 12:10:04 active index set to 1
+2026-11-09 12:10:04 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:12:53 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:12:58 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:13:00 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:13:14 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:13:35 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 12:13:35 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 12:13:35 created material grid
+2026-11-09 12:13:35 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 12:13:35 active index set to 1
+2026-11-09 12:13:35 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:25:43 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:49:28 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:50:03 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 12:50:03 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 12:50:03 created material grid
+2026-11-09 12:50:03 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 12:50:03 active index set to 1
+2026-11-09 12:50:03 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:51:40 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:51:52 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:51:55 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:52:06 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 12:52:06 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 12:52:06 created material grid
+2026-11-09 12:52:06 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 12:52:06 active index set to 1
+2026-11-09 12:52:06 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:52:08 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:52:12 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:52:15 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:52:17 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:52:20 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:53:15 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:53:30 add_anvil_material execute filepath='/media/user/USB DISK/grid.png'
+2026-11-09 12:53:30 abs_path='/media/user/USB DISK/grid.png' exists=True
+2026-11-09 12:53:30 created material grid
+2026-11-09 12:53:30 shader built; materials now=['ANVIL_Unassigned', 'grid', 'Material']
+2026-11-09 12:53:30 active index set to 1
+2026-11-09 12:53:30 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=1
+2026-11-09 12:56:03 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=0
+2026-11-09 12:56:05 [panel] draw materials=['ANVIL_Unassigned', 'grid', 'Material'] active_idx=0
+2026-11-09 12:56:56 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 12:58:44 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=1
+2026-11-09 12:58:51 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:58:55 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:58:58 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:02 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:07 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:10 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:12 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:20 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:23 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:25 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:29 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:40 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:46 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:49 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:54 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 12:59:57 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 13:00:16 [panel] draw materials=['ANVIL_Unassigned', 'Material'] active_idx=0
+2026-11-09 13:00:21 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=0
+2026-11-09 13:01:07 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 13:01:10 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 13:01:12 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 13:01:16 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 13:01:18 [panel] draw materials=['ANVIL_Unassigned', 'Default', 'Material'] active_idx=1
+2026-11-09 13:01:38 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:06:03 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:06:30 add_anvil_material execute filepath='/home/user/Documents/Materials/Metal/Albedo.png'
+2026-11-09 13:06:30 abs_path='/home/user/Documents/Materials/Metal/Albedo.png' exists=True
+2026-11-09 13:06:30 created material Albedo
+2026-11-09 13:06:30 shader built; materials now=['Albedo', 'Material']
+2026-11-09 13:06:30 active index set to 0
+2026-11-09 13:06:30 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:08:08 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:08:14 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:09:08 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:09:12 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:09:17 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:09:21 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:09:23 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:09:40 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:10:07 add_anvil_material execute filepath='/home/user/Documents/Materials/DiamondPlate/Albedo.png'
+2026-11-09 13:10:07 abs_path='/home/user/Documents/Materials/DiamondPlate/Albedo.png' exists=True
+2026-11-09 13:10:07 created material Albedo
+2026-11-09 13:10:07 shader built; materials now=['Albedo', 'Material']
+2026-11-09 13:10:07 active index set to 0
+2026-11-09 13:10:07 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:11:57 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:12:10 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:13:04 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:13:20 add_anvil_material execute filepath='/home/user/Documents/Materials/Wall/Albedo.png'
+2026-11-09 13:13:20 abs_path='/home/user/Documents/Materials/Wall/Albedo.png' exists=True
+2026-11-09 13:13:20 created material Albedo
+2026-11-09 13:13:20 shader built; materials now=['Albedo', 'Material']
+2026-11-09 13:13:20 active index set to 0
+2026-11-09 13:13:20 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:18:15 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:18:48 add_anvil_material execute filepath='/home/user/Documents/Materials/Planks/Color.png'
+2026-11-09 13:18:48 abs_path='/home/user/Documents/Materials/Planks/Color.png' exists=True
+2026-11-09 13:18:48 created material Color
+2026-11-09 13:18:48 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:16 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:22 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:26 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:30 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:33 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:35 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:20:38 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:21:06 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:21:18 add_anvil_material execute filepath='/home/user/Documents/Materials/Planks/Metallic.png'
+2026-11-09 13:21:18 abs_path='/home/user/Documents/Materials/Planks/Metallic.png' exists=True
+2026-11-09 13:21:18 created material Metallic
+2026-11-09 13:21:18 [panel] draw materials=['Material', 'Metallic'] active_idx=0
+2026-11-09 13:21:32 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:21:39 add_anvil_material execute filepath='/home/user/Documents/Materials/Planks/Color.png'
+2026-11-09 13:21:39 abs_path='/home/user/Documents/Materials/Planks/Color.png' exists=True
+2026-11-09 13:21:39 created material Color
+2026-11-09 13:21:39 [panel] draw materials=['Color', 'Material'] active_idx=0
+2026-11-09 13:22:22 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 13:22:44 add_anvil_material execute filepath='/home/user/Documents/Materials/Carpet/Albedo.png'
+2026-11-09 13:22:44 abs_path='/home/user/Documents/Materials/Carpet/Albedo.png' exists=True
+2026-11-09 13:22:44 created material Albedo
+2026-11-09 13:22:44 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:15 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:17 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:21 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:23 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:29 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:31 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:36 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:38 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:42 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:45 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:48 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:51 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:56 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:23:58 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:04 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:06 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:09 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:18 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:20 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:29 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:33 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:38 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:44 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:24:46 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 13:26:02 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:14:50 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:47:28 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:56:46 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:57:18 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:57:20 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:57:42 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:57:50 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:57:52 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 15:58:46 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 16:01:53 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 16:01:56 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 16:02:05 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 16:02:07 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 16:11:37 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 16:29:06 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 21:00:33 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 21:42:33 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 21:44:25 add_anvil_material execute filepath='/home/user/Documents/Materials/Seat/Albedo.png'
+2026-11-09 21:44:25 abs_path='/home/user/Documents/Materials/Seat/Albedo.png' exists=True
+2026-11-09 21:44:25 created material Albedo
+2026-11-09 21:44:25 shader built; materials now=['Albedo', 'Material']
+2026-11-09 21:44:25 active index set to 0
+2026-11-09 21:44:25 [panel] draw materials=['Albedo', 'Material'] active_idx=0
+2026-11-09 21:44:46 [panel] draw materials=['Default'] active_idx=0
+2026-11-09 22:25:39 [panel] draw materials=['Default'] active_idx=0
+2026-11-09 22:26:24 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_Grass_1_256.png'
+2026-11-09 22:26:24 abs_path='/home/user/FPSGame/src/patterns/materials/T_Grass_1_256.png' exists=True
+2026-11-09 22:26:24 created material T_Grass_1_256
+2026-11-09 22:26:24 shader built; materials now=['Default', 'T_Grass_1_256']
+2026-11-09 22:26:24 active index set to 1
+2026-11-09 22:26:24 [panel] draw materials=['Default', 'T_Grass_1_256'] active_idx=1
+2026-11-09 22:27:32 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_asphalt_01.png'
+2026-11-09 22:27:32 abs_path='/home/user/FPSGame/src/patterns/materials/T_asphalt_01.png' exists=True
+2026-11-09 22:27:32 created material T_asphalt_01
+2026-11-09 22:27:32 shader built; materials now=['Default', 'Grass', 'T_asphalt_01']
+2026-11-09 22:27:32 active index set to 2
+2026-11-09 22:27:32 [panel] draw materials=['Default', 'Grass', 'T_asphalt_01'] active_idx=2
+2026-11-09 22:34:33 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_dirt_03.png'
+2026-11-09 22:34:33 abs_path='/home/user/FPSGame/src/patterns/materials/T_dirt_03.png' exists=True
+2026-11-09 22:34:33 created material T_dirt_03
+2026-11-09 22:34:33 shader built; materials now=['Asphalt', 'Default', 'Grass', 'T_dirt_03']
+2026-11-09 22:34:33 active index set to 3
+2026-11-09 22:34:33 [panel] draw materials=['Asphalt', 'Default', 'Grass', 'T_dirt_03'] active_idx=3
+2026-11-09 22:48:44 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_steel_rusted_01.png'
+2026-11-09 22:48:44 abs_path='/home/user/FPSGame/src/patterns/materials/T_steel_rusted_01.png' exists=True
+2026-11-09 22:48:44 created material T_steel_rusted_01
+2026-11-09 22:48:44 shader built; materials now=['Asphalt', 'Default', 'Dirt', 'Grass', 'T_steel_rusted_01']
+2026-11-09 22:48:44 active index set to 4
+2026-11-09 22:48:44 [panel] draw materials=['Asphalt', 'Default', 'Dirt', 'Grass', 'T_steel_rusted_01'] active_idx=4
+2026-11-09 22:50:31 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_concrete_01.png'
+2026-11-09 22:50:31 abs_path='/home/user/FPSGame/src/patterns/materials/T_concrete_01.png' exists=True
+2026-11-09 22:50:31 created material T_concrete_01
+2026-11-09 22:50:31 shader built; materials now=['Asphalt', 'Default', 'Dirt', 'Grass', 'Rust', 'T_concrete_01']
+2026-11-09 22:50:31 active index set to 5
+2026-11-09 22:50:31 [panel] draw materials=['Asphalt', 'Default', 'Dirt', 'Grass', 'Rust', 'T_concrete_01'] active_idx=5
+2026-11-09 22:51:23 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_net_01.png'
+2026-11-09 22:51:23 abs_path='/home/user/FPSGame/src/patterns/materials/T_net_01.png' exists=True
+2026-11-09 22:51:23 created material T_net_01
+2026-11-09 22:51:23 shader built; materials now=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Rust', 'T_net_01']
+2026-11-09 22:51:23 active index set to 6
+2026-11-09 22:51:23 [panel] draw materials=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Rust', 'T_net_01'] active_idx=6
+2026-11-09 22:54:40 [panel] draw materials=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Net', 'Rust'] active_idx=5
+2026-11-09 23:12:12 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 23:12:18 [panel] draw materials=['Material', 'T_dirt_02.png'] active_idx=0
+2026-11-09 23:23:21 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_grass_02.png'
+2026-11-09 23:23:21 abs_path='/home/user/FPSGame/src/patterns/materials/T_grass_02.png' exists=True
+2026-11-09 23:23:21 created material T_grass_02
+2026-11-09 23:23:21 shader built; materials now=['Material', 'T_dirt_02.png', 'T_grass_02']
+2026-11-09 23:23:21 active index set to 2
+2026-11-09 23:23:21 [panel] draw materials=['Material', 'T_dirt_02.png', 'T_grass_02'] active_idx=2
+2026-11-09 23:43:45 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 23:44:38 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_rock_02.png'
+2026-11-09 23:44:38 abs_path='/home/user/FPSGame/src/patterns/materials/T_rock_02.png' exists=True
+2026-11-09 23:44:38 created material T_rock_02
+2026-11-09 23:44:38 shader built; materials now=['Material', 'T_rock_02']
+2026-11-09 23:44:38 active index set to 1
+2026-11-09 23:44:38 [panel] draw materials=['Material', 'T_rock_02'] active_idx=1
+2026-11-09 23:52:54 [panel] draw materials=['Material'] active_idx=0
+2026-11-09 23:53:01 [panel] draw materials=['Material', 'T_rock_02.png'] active_idx=0
+2026-11-09 23:54:08 [panel] draw materials=['Material'] active_idx=0
+2026-11-10 09:28:07 [panel] draw materials=[] active_idx=0
+2026-11-10 09:28:30 [panel] draw materials=['Default'] active_idx=0
+2026-11-10 10:11:26 [panel] draw materials=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Net', 'Rust'] active_idx=3
+2026-11-10 10:20:09 [panel] draw materials=['Material'] active_idx=0
+2026-11-10 10:20:39 [panel] draw materials=['Material', 'T_Grass_1_256.png'] active_idx=0
+2026-11-10 10:55:36 [panel] draw materials=['T_Grass_1_256.png'] active_idx=0
+2026-11-10 13:10:11 [panel] draw materials=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Net', 'Rust'] active_idx=3
+2026-11-10 17:15:12 [panel] draw materials=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Net', 'Rust'] active_idx=3
+2026-11-10 17:16:37 [panel] draw materials=['Material'] active_idx=0
+2026-11-10 17:16:59 [panel] draw materials=['Material', 'T_steel_rusted_01.png'] active_idx=0
+2026-11-10 17:17:09 [panel] draw materials=['Material'] active_idx=0
+2026-11-10 17:17:48 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_rock_02.png'
+2026-11-10 17:17:48 abs_path='/home/user/FPSGame/src/patterns/materials/T_rock_02.png' exists=True
+2026-11-10 17:17:48 created material T_rock_02
+2026-11-10 17:17:48 shader built; materials now=['Material', 'T_rock_02']
+2026-11-10 17:17:48 active index set to 1
+2026-11-10 17:17:48 [panel] draw materials=['Material', 'T_rock_02'] active_idx=1
+2026-11-10 17:26:00 [panel] draw materials=['Rock'] active_idx=1
+2026-11-10 18:00:52 [panel] draw materials=['Material', 'T_rock_02.png'] active_idx=0
+2026-11-10 18:04:53 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_wood_04.png'
+2026-11-10 18:04:53 abs_path='/home/user/FPSGame/src/patterns/materials/T_wood_04.png' exists=True
+2026-11-10 18:04:53 created material T_wood_04
+2026-11-10 18:04:53 shader built; materials now=['Material', 'T_wood_04', 'Wood']
+2026-11-10 18:04:53 active index set to 1
+2026-11-10 18:04:53 [panel] draw materials=['Material', 'T_wood_04', 'Wood'] active_idx=1
+2026-11-10 18:04:55 [panel] draw materials=['Material', 'T_wood_04'] active_idx=1
+2026-11-10 18:09:10 [panel] draw materials=['T_wood_04'] active_idx=1
+2026-11-10 18:14:34 [panel] draw materials=['Material'] active_idx=0
+2026-11-10 18:15:37 [panel] draw materials=['Material', 'T_wood_04.png'] active_idx=0
+2026-11-10 18:17:36 [panel] draw materials=['T_wood_04'] active_idx=1
+2026-11-10 18:19:55 [panel] draw materials=['Material', 'T_wood_04.png'] active_idx=0
+2026-11-10 18:20:52 [panel] draw materials=['T_wood_04.png'] active_idx=0
+2026-11-10 18:21:37 [panel] draw materials=['Material', 'T_wood_04.png'] active_idx=0
+2026-11-10 18:26:17 [panel] draw materials=['Material'] active_idx=0
+2026-11-10 18:26:30 [panel] draw materials=['Material', 'T_wood_04.png'] active_idx=0
+2026-11-10 18:27:55 [panel] draw materials=['Material', 'T_wood_04.png', 'T_wood_04.png.001'] active_idx=0
+2026-11-10 18:31:34 [panel] draw materials=['Material', 'T_wood_04.png', 'T_wood_04.png.001', 'T_wood_04.png.002'] active_idx=0
+2026-11-10 18:31:55 [panel] draw materials=['T_wood_04.png'] active_idx=0
+2026-11-10 18:31:57 [panel] draw materials=['Material', 'T_wood_04.png', 'T_wood_04.png.001', 'T_wood_04.png.002', 'T_wood_04.png.003'] active_idx=0
+2026-11-10 18:32:32 [panel] draw materials=['Material', 'T_wood_04.png', 'T_wood_04.png.001', 'T_wood_04.png.002'] active_idx=3
+2026-11-10 18:32:34 [panel] draw materials=['Material', 'T_wood_04.png', 'T_wood_04.png.001'] active_idx=2
+2026-11-10 18:32:35 [panel] draw materials=['Material', 'T_wood_04.png'] active_idx=1
+2026-11-10 18:39:07 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 18:40:56 [panel] draw materials=['pattern-bark.png', 'pattern-checkboard.png', 'pattern-danger.png', 'pattern-rooftiles.png', 'pattern-steel-rusted.png', 'pattern-wood-glazed.png', 'pattern-wood-planks.png', 'pattern-wood.png', 'Wood'] active_idx=0
+2026-11-10 19:04:06 [panel] draw materials=['Wood'] active_idx=0
+2026-11-10 19:09:26 [panel] draw materials=['Asphalt', 'Concrete', 'Default', 'Dirt', 'Grass', 'Net', 'Rust'] active_idx=3
+2026-11-10 19:11:00 [panel] draw materials=['0_Material', 'Dirt', 'Grass'] active_idx=0
+2026-11-10 19:11:55 [panel] draw materials=['Rock'] active_idx=1
+2026-11-10 19:17:44 [panel] draw materials=['ANVIL_Unassigned', 'T_bark_01.png', 'T_roof_tiles_01.png', 'T_steel_rusted_02.png', 'T_stone_wall_01.png', 'T_tiles_03.png'] active_idx=0
+2026-11-10 19:21:40 [panel] draw materials=['T_steel_rusted_02.png', 'T_tiles_03.png'] active_idx=0
+2026-11-10 19:24:07 [panel] draw materials=['T_steel_rusted_01.png', 'T_steel_rusted_02.png'] active_idx=0
+2026-11-10 19:26:52 [panel] draw materials=['Material.070'] active_idx=0
+2026-11-10 19:27:02 [panel] draw materials=[] active_idx=0
+2026-11-10 19:27:18 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/specific/building_2_texture.png'
+2026-11-10 19:27:18 abs_path='/home/user/FPSGame/src/patterns/specific/building_2_texture.png' exists=True
+2026-11-10 19:27:18 created material building_2_texture
+2026-11-10 19:27:18 shader built; materials now=['building_2_texture']
+2026-11-10 19:27:18 active index set to 0
+2026-11-10 19:27:18 [panel] draw materials=['building_2_texture'] active_idx=0
+2026-11-10 19:28:23 [panel] draw materials=['pattern-asphalt.png', 'pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:28:33 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:28:34 [panel] draw materials=['pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:28:35 [panel] draw materials=['pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:28:35 [panel] draw materials=['pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:28:36 [panel] draw materials=[] active_idx=0
+2026-11-10 19:28:55 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png'
+2026-11-10 19:28:55 abs_path='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png' exists=True
+2026-11-10 19:28:55 created material T_wheat_01
+2026-11-10 19:28:55 shader built; materials now=['T_wheat_01']
+2026-11-10 19:28:55 active index set to 0
+2026-11-10 19:28:55 [panel] draw materials=['T_wheat_01'] active_idx=0
+2026-11-10 19:30:49 [panel] draw materials=['pattern-asphalt.png', 'pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:30:52 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:30:53 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wood-planks.png'] active_idx=2
+2026-11-10 19:30:55 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wood-planks.png'] active_idx=1
+2026-11-10 19:30:56 [panel] draw materials=['pattern-asphalt.png.001'] active_idx=0
+2026-11-10 19:30:57 [panel] draw materials=[] active_idx=0
+2026-11-10 19:31:05 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png'
+2026-11-10 19:31:05 abs_path='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png' exists=True
+2026-11-10 19:31:05 created material T_wheat_01
+2026-11-10 19:31:05 shader built; materials now=['T_wheat_01']
+2026-11-10 19:31:05 active index set to 0
+2026-11-10 19:31:05 [panel] draw materials=['T_wheat_01'] active_idx=0
+2026-11-10 19:32:04 [panel] draw materials=['pattern-asphalt.png', 'pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:32:14 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:32:16 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001'] active_idx=2
+2026-11-10 19:32:18 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png'] active_idx=1
+2026-11-10 19:32:19 [panel] draw materials=['pattern-asphalt.png.001'] active_idx=0
+2026-11-10 19:32:20 [panel] draw materials=[] active_idx=0
+2026-11-10 19:32:31 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png'
+2026-11-10 19:32:31 abs_path='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png' exists=True
+2026-11-10 19:32:31 created material T_wheat_01
+2026-11-10 19:32:31 shader built; materials now=['T_wheat_01']
+2026-11-10 19:32:31 active index set to 0
+2026-11-10 19:32:31 [panel] draw materials=['T_wheat_01'] active_idx=0
+2026-11-10 19:33:25 [panel] draw materials=['pattern-asphalt.png', 'pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:33:28 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wheat-straw.png.001', 'pattern-wood-planks.png'] active_idx=0
+2026-11-10 19:33:29 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png', 'pattern-wood-planks.png'] active_idx=2
+2026-11-10 19:33:31 [panel] draw materials=['pattern-asphalt.png.001', 'pattern-wheat-straw.png'] active_idx=1
+2026-11-10 19:33:32 [panel] draw materials=['pattern-asphalt.png.001'] active_idx=0
+2026-11-10 19:33:33 [panel] draw materials=[] active_idx=0
+2026-11-10 19:33:38 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png'
+2026-11-10 19:33:38 abs_path='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png' exists=True
+2026-11-10 19:33:38 created material T_wheat_01
+2026-11-10 19:33:38 shader built; materials now=['T_wheat_01']
+2026-11-10 19:33:38 active index set to 0
+2026-11-10 19:33:38 [panel] draw materials=['T_wheat_01'] active_idx=0
+2026-11-10 19:36:44 [panel] draw materials=[] active_idx=0
+2026-11-10 19:36:51 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png'
+2026-11-10 19:36:51 abs_path='/home/user/FPSGame/src/patterns/materials/T_wheat_01.png' exists=True
+2026-11-10 19:36:51 created material T_wheat_01
+2026-11-10 19:36:51 shader built; materials now=['T_wheat_01']
+2026-11-10 19:36:51 active index set to 0
+2026-11-10 19:36:51 [panel] draw materials=['T_wheat_01'] active_idx=0
+2026-11-10 19:38:26 [panel] draw materials=[] active_idx=0
+2026-11-10 19:38:39 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_metal.png'
+2026-11-10 19:38:39 abs_path='/home/user/FPSGame/src/patterns/materials/T_metal.png' exists=True
+2026-11-10 19:38:39 created material T_metal
+2026-11-10 19:38:39 shader built; materials now=['T_metal']
+2026-11-10 19:38:39 active index set to 0
+2026-11-10 19:38:39 [panel] draw materials=['T_metal'] active_idx=0
+2026-11-10 19:42:06 [panel] draw materials=['fuse_box_texture.png', 'rust_texture.png'] active_idx=0
+2026-11-10 19:45:04 [panel] draw materials=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 'pattern-wood-planks.png.001', 'pattern-wood.png.001', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png', 'T_wood_07.png'] active_idx=0
+2026-11-10 19:45:10 [panel] draw materials=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 'pattern-wood.png.001', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png', 'T_wood_07.png'] active_idx=2
+2026-11-10 19:45:25 [panel] draw materials=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 'pattern-wood.png.001', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png'] active_idx=5
+2026-11-10 19:45:28 [panel] draw materials=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 'pattern-wood.png.001', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png', 'T_wood_07.png'] active_idx=6
+2026-11-10 19:46:03 [panel] draw materials=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png', 'T_wood_07.png'] active_idx=2
+2026-11-10 19:46:16 add_anvil_material execute filepath='/home/user/FPSGame/src/patterns/materials/T_bark_01.png'
+2026-11-10 19:46:16 abs_path='/home/user/FPSGame/src/patterns/materials/T_bark_01.png' exists=True
+2026-11-10 19:46:16 created material T_bark_01
+2026-11-10 19:46:16 shader built; materials now=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 'T_bark_01', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png', 'T_wood_07.png']
+2026-11-10 19:46:16 active index set to 2
+2026-11-10 19:46:16 [panel] draw materials=['pattern-rooftiles.png.001', 'pattern-stylesheet.png.001', 'T_bark_01', 't_bark_01.png', 'T_roof_tiles_01.png', 'T_wood_04.png', 'T_wood_07.png'] active_idx=2
+2026-11-10 20:36:09 [panel] draw materials=['pattern-bark.png', 'pattern-checkboard.png', 'pattern-danger.png', 'pattern-rooftiles.png', 'pattern-steel-rusted.png', 'pattern-wood-glazed.png', 'pattern-wood-planks.png', 'pattern-wood.png', 'Wood'] active_idx=0
+2026-11-10 20:46:26 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:49:37 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:50:09 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:50:32 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:18 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:20 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:39 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:41 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:43 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:46 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:49 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:51 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:52:53 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:08 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:16 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:21 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:23 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:25 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:28 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:31 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:33 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:45 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:48 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:50 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:52 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:56 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:53:58 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:54:01 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:54:04 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:54:23 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:54:26 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:54:56 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:54:58 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:03 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:06 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:08 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:11 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:15 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:21 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:24 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:55:42 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:57:47 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:57:54 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:57:59 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:06 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:09 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:11 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:14 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:16 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:19 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 20:58:31 [panel] draw materials=['Wood'] active_idx=1
+2026-11-10 21:01:20 [panel] draw materials=['asphalt_texture.png', 'asphalt_texture.png.001', 'grass_texture.png', 'grass_texture.png.001', 'pattern-asphalt.png'] active_idx=0
+2026-11-10 21:01:26 [panel] draw materials=['pattern-asphalt.png'] active_idx=0
+2026-11-10 21:07:39 [panel] draw materials=['pattern-checkboard.png', 'pattern-checkboard.png.001', 'pattern-metal-fence.png', 'pattern-metal-net.png', 'pattern-steel-rusted-old.png', 'pattern-steel-rusted.png'] active_idx=0
+2026-11-10 21:07:44 [panel] draw materials=['pattern-checkboard.png', 'pattern-steel-rusted.png'] active_idx=0
+2026-11-10 21:07:46 [panel] draw materials=['pattern-checkboard.png', 'pattern-checkboard.png.001', 'pattern-metal-fence.png', 'pattern-metal-net.png', 'pattern-steel-rusted-old.png', 'pattern-steel-rusted.png'] active_idx=0
+2026-11-10 21:07:48 [panel] draw materials=['pattern-metal-net.png', 'pattern-steel-rusted.png'] active_idx=0
+2026-11-10 21:09:41 [panel] draw materials=['Material.073', 'Material.074', 'Material.075', 'Material.076', 'Material.077'] active_idx=0
+2026-11-10 21:10:34 [panel] draw materials=['dirt_texture.png', 'Material.001', 'pot_texture.png'] active_idx=0
+2026-11-10 22:16:54 [panel] draw materials=['pattern-metal-net.png', 'pattern-steel-rusted.png'] active_idx=0
